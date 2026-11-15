@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="escuro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Histórico do firmware — smartwatch ESP32-S3</title>
+<meta name="description" content="Todas as versões do firmware do smartwatch ESP32-S3: bugs corrigidos, recursos adicionados e alterações, versão por versão.">
+<meta name="theme-color" content="#0a0c10">
+<style>
+/* ============================================================
+   Historico do firmware - smartwatch ESP32-S3
+   Paleta = a mesma do firmware (grafite + laranja).
+   ============================================================ */
+
+:root {
+  color-scheme: dark;
+  --bg: #0a0c10;
+  --surface: #14171d;
+  --surface-2: #1b2027;
+  --line: #262c36;
+  --ink: #f2f4f7;
+  --dim: #9aa3b0;
+  --acc: #ff7a00;
+  --ok: #38d996;
+  --warn: #ffb057;
+  --err: #ff6b6b;
+  --info: #7cb8ff;
+  --sel: rgba(255, 122, 0, 0.28);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03);
+  --radius: 14px;
+}
+
+:root[data-tema="claro"] {
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #fafbfc;
+  --line: #e0e4ea;
+  --ink: #12151a;
+  --dim: #5a6373;
+  --acc: #b34700;
+  --ok: #0a6e43;
+  --warn: #8a5200;
+  --err: #b3261e;
+  --info: #0b4c8c;
+  --sel: rgba(179, 71, 0, 0.18);
+  --shadow: 0 1px 2px rgba(16, 20, 28, 0.06);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  scrollbar-color: var(--line) transparent;
+}
+
+::selection { background: var(--sel); color: var(--ink); }
+
+a { color: var(--acc); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+code {
+  font-family: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.1em 0.35em;
+  word-break: break-word;
+}
+
+.wrap {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px 72px;
+}
+
+/* ---------------- cabecalho ---------------- */
+
+.topo { margin-bottom: 28px; }
+
+.topo h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.75rem, 4vw, 2.15rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.topo .sub {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--dim);
+}
+
+.topo .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 16px;
+  font-size: 0.86rem;
+  color: var(--dim);
+}
+
+.topo .meta b { color: var(--ink); font-weight: 600; }
+
+.tema {
+  margin-left: auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--dim);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.tema:hover { color: var(--ink); border-color: var(--dim); }
+
+/* ---------------- controles ---------------- */
+
+.controles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  padding: 16px;
+  margin-bottom: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.campo { flex: 1 1 260px; min-width: 0; }
+
+.campo label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.campo input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  caret-color: var(--acc);
+}
+.campo input::placeholder { color: var(--dim); opacity: 1; }
+.campo input:focus { border-color: var(--acc); }
+
+.filtros { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.filtro {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.filtro:hover { color: var(--ink); border-color: var(--dim); }
+.filtro[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--surface-2);
+  border-color: var(--acc);
+}
+.filtro .n { color: var(--dim); font-size: 0.78rem; margin-left: 6px; }
+
+.status-busca {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--dim);
+}
+
+/* ---------------- lista de versoes ---------------- */
+
+.linha {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 20px;
+  padding: 0 0 0 0;
+  border-top: 1px solid var(--line);
+}
+.linha:first-of-type { border-top: 0; }
+
+.quando {
+  padding: 22px 0 0;
+  font-family: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.quando b {
+  display: block;
+  font-size: 1rem;
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.quando a { color: inherit; text-decoration: none; }
+.quando a:hover { color: var(--acc); text-decoration: underline; }
+
+.card { min-width: 0; padding: 14px 0 22px; }
+
+details { border-radius: 10px; }
+
+summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 14px;
+  align-items: start;
+  padding: 8px 0;
+  cursor: pointer;
+  list-style: none;
+}
+summary::-webkit-details-marker { display: none; }
+
+.titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+.titulo h2 {
+  margin: 0;
+  min-width: 0;
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  overflow-wrap: break-word;
+}
+
+.seta {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--dim);
+  transition: transform 160ms ease, color 160ms ease;
+}
+summary:hover .seta { color: var(--ink); }
+details[open] > summary .seta { transform: rotate(90deg); color: var(--acc); }
+
+.seta svg { width: 16px; height: 16px; display: block; }
+
+.contagem {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.8rem;
+  color: var(--dim);
+}
+.contagem span { white-space: nowrap; }
+
+.estado {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.estado.ok      { color: var(--ok);   background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.estado.hw      { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.estado.aberto  { color: var(--err);  background: color-mix(in srgb, var(--err) 14%, transparent); }
+
+.corpo { padding: 6px 0 4px; }
+
+.resumo {
+  margin: 0 0 18px;
+  max-width: 68ch;
+  color: var(--ink);
+}
+
+.grupos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 24px;
+  margin-bottom: 18px;
+}
+
+.grupo h3 {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.grupo.corrigido h3 { color: var(--ok); }
+.grupo.adicionado h3 { color: var(--info); }
+.grupo.alterado h3 { color: var(--warn); }
+
+.grupo ul { margin: 0; padding: 0; list-style: none; }
+.grupo li {
+  position: relative;
+  padding-left: 14px;
+  margin-bottom: 9px;
+  font-size: 0.93rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.grupo li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.rodape-versao {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 0.82rem;
+  color: var(--dim);
+}
+.rodape-versao .rot {
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 0.72rem;
+  margin-right: 6px;
+}
+.rodape-versao .pendente { color: var(--warn); }
+.rodape-versao .pendente .rot { color: var(--warn); }
+
+.vazio {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--dim);
+}
+
+/* ---------------- fim ---------------- */
+
+.rodape {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  font-size: 0.86rem;
+  color: var(--dim);
+}
+.rodape p { margin: 0 0 10px; max-width: 70ch; }
+.rodape p:last-child { margin-bottom: 0; }
+
+/* ---------------- responsivo ---------------- */
+
+@media (max-width: 760px) {
+  .wrap { padding: 28px 16px 56px; }
+  .linha { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .quando { padding: 18px 0 0; display: flex; align-items: baseline; gap: 10px; }
+  .quando b { font-size: 0.95rem; }
+  .card { padding: 6px 0 18px; }
+  .grupos { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .topo .meta { gap: 6px 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seta, details[open] > summary .seta { transition: none; }
+}
+
+@media print {
+  .controles, .tema { display: none; }
+  .linha { break-inside: avoid; }
+  body { background: #fff; color: #000; }
+  details { display: block; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="topo">
+    <h1>Histórico do firmware</h1>
+    <p class="sub">
+      Todas as versões do relógio ESP32-S3 (ST7735 128×160, touch XPT2046, SD em SPI):
+      o que foi corrigido, o que entrou de novo e o que mudou em cada entrega — com o
+      motivo registrado, para que o mesmo bug não volte sem aviso.
+    </p>
+    <div class="meta">
+      <span><b id="total-versoes">—</b> versões</span>
+      <span>última: <b id="ultima-data">—</b></span>
+      <span>ESP32-S3 N16R8 · 128×160 · LVGL 8.4</span>
+      <button class="tema" id="tema" type="button" aria-pressed="false">Tema claro</button>
+    </div>
+  </header>
+
+  <section class="controles" aria-label="Filtros do histórico">
+    <div class="campo">
+      <label for="busca">Buscar</label>
+      <input id="busca" type="search" placeholder="sd, wifi, errno=5, psram, doom…" autocomplete="off">
+    </div>
+
+    <div class="filtros" role="group" aria-label="Filtrar por estado">
+      <button class="filtro" type="button" data-estado="todos" aria-pressed="true">
+        Tudo <span class="n"></span>
+      </button>
+      <button class="filtro" type="button" data-estado="ok" aria-pressed="false">
+        Resolvido <span class="n"></span>
+      </button>
+      <button class="filtro" type="button" data-estado="hw" aria-pressed="false">
+        Validar no relógio <span class="n"></span>
+      </button>
+      <button class="filtro" type="button" data-estado="aberto" aria-pressed="false">
+        Bug aberto <span class="n"></span>
+      </button>
+    </div>
+
+    <p class="status-busca" id="resultado" aria-live="polite"></p>
+  </section>
+
+  <main id="lista" aria-label="Versões do firmware"></main>
+
+  <footer class="rodape">
+    <p>
+      <strong>Como isso é mantido.</strong> A fonte é um único arquivo:
+      <code>docs/assets/versoes.js</code>. Cada item é um release com listas de
+      <em>corrigido</em>, <em>adicionado</em> e <em>alterado</em>; o site é só a
+      renderização dele. Versão nova = um item novo no topo do array.
+    </p>
+    <p>
+      <strong>Sobre a numeração.</strong> <code>v0.NN</code> é o índice do release na
+      ordem em que foi entregue — não é semver. O detalhe técnico completo de cada
+      rodada fica em <code>STATUS.md</code> (raiz do repositório) e, para o cartão SD,
+      em <a href="analise_sd.md">analise_sd.md</a>.
+    </p>
+    <p>
+      Quando um item está marcado <em>validar no relógio</em>, o código está pronto e
+      compilando, mas o comportamento depende de hardware (rádio, cartão, energia) e
+      ainda não foi confirmado no pulso.
+    </p>
+  </footer>
+
+</div>
+
+<script>
+// ============================================================
+//  Histórico do firmware do smartwatch.
+//  FONTE DA VERDADE deste site. Editar aqui e o site se atualiza.
+//
+//  Cada item:
+//    v        identificador curto (não é semver oficial; é o índice
+//             do release, na ordem em que foi entregue)
+//    data     AAAA-MM-DD (null quando não foi registrada)
+//    quando   rótulo alternativo quando não há data ("Sessão 5")
+//    titulo   o que mudou, em uma linha
+//    estado   "ok"     = resolvido / compila limpo
+//             "hw"     = pronto, falta validar no relógio
+//             "aberto" = bug conhecido, ainda sem solução
+//    resumo   o contexto: por que essa versão existiu
+//    corrigido / adicionado / alterado: listas curtas (crase vira <code>)
+//    arquivos  arquivos tocados
+//    pendente  o que ficou em aberto nesta versão (opcional)
+//    fonte     onde o detalhe completo está documentado
+// ============================================================
+
+window.VERSOES = [
+  {
+    v: "v0.25",
+    data: "2026-11-16",
+    titulo: "O cartão morre na associação do Wi-Fi, não na escrita",
+    estado: "hw",
+    resumo:
+      "O log do relógio fechou o diagnóstico: `card=3` (SDHC funcionando) no boot e " +
+      "`card=4` (CARD_UNKNOWN) exatamente quando o rádio associou, com `errno=19` " +
+      "(FR_NOT_READY). A escrita nunca foi a causa nesta rodada — o cartão já estava " +
+      "morto quando o upload começou.",
+    corrigido: [
+      "`cardType() != CARD_NONE` era tratado como \"montado\". CARD_UNKNOWN tem o VFS registrado e o DATA I/O morto: o firmware nunca remontava e seguia falhando com errno=19.",
+      "`WiFi.setTxPower()` era chamado antes de `WiFi.begin()`/`softAP()`. O core checa `started()` e devolve false, então o rádio seguia a 19.5 dBm — o pico de corrente da associação que derruba o 3V3 do slot.",
+      "`webSdRecover()` desmontava sem provar que o cartão voltou a falar; agora verifica com leitura crua do setor 0."
+    ],
+    adicionado: [
+      "`sdAlive()`: lê o setor 0 pelo driver (sem FatFs) com guarda para `pdrv=0xFF`.",
+      "Logs `[srv] sd antes do wifi` / `sd depois do wifi` / `remount pos-wifi`.",
+      "Fallback de potência: 8.5 dBm por 8 s e, se não associar, 19.5 dBm."
+    ],
+    alterado: [
+      "`webSdMounted()` e `sdMountedOk()` (ui.h) aceitam só MMC/SD/SDHC.",
+      "`webSdMount`, `sdProbe` e `sdBeginSession` desmontam quando o estado é UNKNOWN (par end+begin).",
+      "`/st`, `/up` e o start do servidor usam `!webSdMounted()` como gatilho de recovery, não `== CARD_NONE`."
+    ],
+    arquivos: ["Smartwatch.ino", "core.h", "ui.h", "docs/analise_sd.md", "STATUS.md"],
+    pendente: [
+      "Validar no relógio: o cartão deve sobreviver ao Wi-Fi (ou remontar com `ok=1`) e o upload gravar em /FOTOS.",
+      "Se cair mesmo com TX baixo, o próximo alvo é hardware (capacitor no 3V3 do slot)."
+    ],
+    fonte: "STATUS.md §25 · docs/analise_sd.md §3.7"
+  },
+  {
+    v: "v0.24",
+    data: "2026-11-15",
+    titulo: "Confirmado com teste A/B: a tela não quebra o SD",
+    estado: "ok",
+    resumo:
+      "O sketch mínimo usando a própria lib gravou antes e depois de 30 s de animação a " +
+      "8 MHz com a luz acesa. A conclusão antiga (\"a tela envenena o cartão\") estava " +
+      "contaminada por um probe que mandava CMD0 antes de testar o CMD17.",
+    corrigido: [
+      "O `rawProbe` antigo mandava CMD0 antes do CMD17 e deixava o cartão em idle — o `r1=0x05` era do próprio teste.",
+      "Diagnóstico do CMD13: em SPI o R2 tem 16 bits e não carrega o CURRENT_STATE; o sketch parou de reportar um estado inexistente."
+    ],
+    adicionado: [
+      "`teste_sd` reescrito com a lib (`SD.readRAW`, CMD13, `SD.end()+SD.begin()`) e knobs `ANIMA_MS`/`ANIMA_LUZ`/`TFT_HZ`."
+    ],
+    alterado: [
+      "Conclusão revista: o barramento compartilhado com o TFT nunca foi a causa."
+    ],
+    arquivos: ["teste_sd/teste_sd.ino", "docs/analise_sd.md", "STATUS.md"],
+    pendente: ["Com a gravação provada, subir `SD_SPI_HZ` de 400 kHz para 1 MHz e medir o mesmo arquivo."],
+    fonte: "STATUS.md §24 · docs/analise_sd.md §3.5"
+  },
+  {
+    v: "v0.23",
+    data: "2026-11-15",
+    titulo: "errno=5 em toda leitura: era o CMD0 matando o CRC do cartão",
+    estado: "ok",
+    resumo:
+      "`sdCardReInit()` mandava CMD0 antes de toda escrita. O CMD0 volta o cartão ao idle " +
+      "e zera o CRC_ON_OFF, mas a lib continua com `supports_crc=true` e compara o CRC16 " +
+      "de cada bloco lido — que vem 0xFFFF. Toda leitura vira FR_DISK_ERR (errno 5), e " +
+      "`f_open` lê setores antes de gravar.",
+    corrigido: [
+      "`sdCardReInit()` e `sdR1(int)` removidos do `Smartwatch.ino`; a chamada saiu do `sdBeginSession()`.",
+      "`sdSpiReset()` (`tftSPI.end()+begin()`) removido: quebrava o host SPI e o mount."
+    ],
+    alterado: [
+      "Regra fixada: quem inicializa o cartão é só o `SD.begin()`. Nada de CMD0/ACMD41 por fora da lib."
+    ],
+    arquivos: ["Smartwatch.ino", "ui.h", "teste_sd/teste_sd.ino", ".claude/napkin.md"],
+    fonte: "STATUS.md §23 · docs/analise_sd.md §3.1–3.4"
+  },
+  {
+    v: "v0.22",
+    data: "2026-11-14",
+    titulo: "Camada de SD refeita no esquema do teste que grava",
+    estado: "ok",
+    resumo:
+      "O sketch mínimo gravava e o relógio não. A camada de SD foi reescrita seguindo o " +
+      "sketch: leitura antes de gravar, 2048 bytes, read-back e luz de fundo apagada " +
+      "durante o teste.",
+    corrigido: [
+      "`busLock()` que devolve false no timeout: quem chama precisa pular a operação. `disp_flush` desenhava em cima do SD.",
+      "`teste_sd3` e `teste_sd4` eliminaram tela e touch como causa antes de mexer no firmware."
+    ],
+    adicionado: [
+      "`sdBusPrepare()`: CS do touch em ALTO + 8 clocks para limpar o MISO antes de todo acesso ao SD.",
+      "Teste de escrita no boot, antes de UI/Wi-Fi/tasks: `[boot] sd: mount=1 grava=1 card=3`."
+    ],
+    alterado: [
+      "Ordem do boot: `dispInit()` → montagem/teste do SD → `SPIFFS.begin()` → `cfgLoad()`.",
+      "Tela a 8 MHz (`tft.setSPISpeed(8000000)`), não 40 MHz."
+    ],
+    arquivos: ["Smartwatch.ino", "core.h", "ui.h", "teste_sd/"],
+    pendente: ["`SPIFFS.begin(true)` antes do SD era a última diferença estrutural para o sketch; ficou reordenado."],
+    fonte: "STATUS.md §21–22"
+  },
+  {
+    v: "v0.21",
+    data: "2026-11-13",
+    titulo: "RESOLVIDO: o touch (XPT2046) segurava o MISO",
+    estado: "ok",
+    resumo:
+      "O XPT2046 divide o MISO (GPIO34) com o SD. Com o CS dele em baixo ou flutuando ele " +
+      "dirige a linha, e o cartão não responde a comando nenhum — nem monta.",
+    corrigido: [
+      "CS do touch em ALTO em qualquer acesso ao SD (`sdBusPrepare`, chamado em `sdTryBegin`, `sdBeginSession`, `webSdMount`, `webSdWriteTest`, `webUpFile`).",
+      "`touch_read()` e `touchTick()` não leem o toque durante `gSdPause`.",
+      "Teste de setor cru removido do boot: ele gravava no cartão."
+    ],
+    adicionado: [
+      "`teste_sd.ino` põe `TOUCH_CS (36) = OUTPUT/HIGH` e `TOUCH_IRQ (35) = INPUT_PULLUP`, como o relógio."
+    ],
+    arquivos: ["Smartwatch.ino", "core.h", "ui.h", "teste_sd/teste_sd.ino"],
+    fonte: "STATUS.md §20"
+  },
+  {
+    v: "v0.20",
+    data: "2026-11-12",
+    titulo: "Isolamento do defeito: módulo, cartão e barramento estão bons",
+    estado: "ok",
+    resumo:
+      "Cinco sketches (SD sozinho, TFT+SD, TFT-primeiro, touch simulado, tela a 40 MHz) " +
+      "gravaram. O hardware ficou inocentado passo a passo e a diferença estrutural " +
+      "restante passou a ser o próprio firmware.",
+    corrigido: [
+      "\"sem espaço no SD\" falso: `totalBytes()==0` (f_getfree falhando) era lido como 0 MB livres e recusava upload num cartão de 16 GB.",
+      "Botão \"Escolher arquivo\" não abria nada: o `<input type=file>` tinha sumido e voltou com `position:absolute;opacity:0` (não `display:none`)."
+    ],
+    adicionado: [
+      "`teste_sd5` (tela a 40 MHz + SD) e `teste_sd4` (touch simulado) para isolar cada suspeito."
+    ],
+    alterado: [
+      "`webSdWriteTest()` espelha o sketch: lê a raiz antes, grava 2048 bytes, relê e compara."
+    ],
+    arquivos: ["teste_sd/", "Smartwatch.ino", "core.h"],
+    fonte: "STATUS.md §19–20"
+  },
+  {
+    v: "v0.19",
+    data: "2026-11-12",
+    titulo: "Modo upload pronto: Wi-Fi salvo, tela nova e a página WearSend",
+    estado: "ok",
+    resumo:
+      "Com Wi-Fi salvo o relógio entra em STA e mostra o IP na tela; sem Wi-Fi sobe o AP " +
+      "\"WearSend\". A tela do relógio e a página do navegador foram refeitas no mesmo " +
+      "estilo, paleta laranja/grafite.",
+    corrigido: [
+      "`SD.totalBytes()` devolvendo 0 recusava o upload com HTTP 507 num cartão de 16 GB; agora só recusa quando o espaço é conhecido e insuficiente.",
+      "`webSdStart()` monta o cartão com o rádio desligado: o pico de corrente do Wi-Fi derrubava o mount."
+    ],
+    adicionado: [
+      "Tela `uiServerScreen()`: card com REDE / SENHA / IP em laranja, barra de progresso, SD OK e botão FECHAR.",
+      "`/st` devolve `rw <livreMB> <totalMB>`; a página mostra \"espaço desconhecido\" quando o total é 0.",
+      "Dois toques para despertar (1 toque não acorda mais) e painel em SLPIN no lightsleep."
+    ],
+    alterado: [
+      "Paleta do modo servidor: `SRV_BG/CARD/EDGE/ACC/TXT/DIM/OK/ERR`."
+    ],
+    arquivos: ["Smartwatch.ino", "ui.h", "core.h"],
+    fonte: "STATUS.md §18"
+  },
+  {
+    v: "v0.18",
+    data: "2026-11-11",
+    titulo: "Upload sem estourar PSRAM + controles do DOOM",
+    estado: "ok",
+    resumo:
+      "Abrir apps em rajada estourava a PSRAM (cada ícone alocava 512 B e nunca liberava). " +
+      "O upload passou a montar o cartão por conta própria e o DOOM ganhou controles que " +
+      "distinguem arrastar de tocar.",
+    corrigido: [
+      "Vazamento de 512 B por ícone na PSRAM: buffer liberado no `LV_EVENT_DELETE`.",
+      "Envio de IR travava a UI ~110 ms por botão: fila + task no core 0 (`irSendAsync`).",
+      "Leitura do WAV travava até 1,4 s: carga em task com \"carregando...\".",
+      "`ledc: requested frequency 200000 ... div_param=0`: portadora do SPK caiu para 100 kHz com fallback de 50 kHz.",
+      "DOOM atirava ao arrastar: agora `RELEASED` só atira se andou <= 7 px e durou <= 600 ms."
+    ],
+    adicionado: [
+      "`webSdEnsure()`, `webSdWriteTest()` e `/dbg` (mount, card, rootOpen, mkdir, openW/errno, write/errno, remove, heap).",
+      "`psNeed()` reserva 24 KB de folga; `psCleanup(true)` antes de entrar em app."
+    ],
+    alterado: [
+      "`SD.begin(..., 8)`: 8 handles de arquivo (upload + player + lista).",
+      "Upload grava em `/FOTOS`, `/VIDEOS`, `/MUSICAS` com nomes 8.3."
+    ],
+    arquivos: ["Smartwatch.ino", "ui.h", "core.h"],
+    fonte: "STATUS.md §5–8 (sessão 2026-11-11b)"
+  },
+  {
+    v: "v0.17",
+    data: "2026-11-10",
+    titulo: "Travamentos: LVGL fora da task, SPI compartilhado e SD lento",
+    estado: "ok",
+    resumo:
+      "\"Apertei um botão e travou\" tinha três causas reais de baixo nível, não apenas " +
+      "demora: LVGL chamado de outra task, TFT e SD disputando o mesmo SPI e montagem " +
+      "bloqueando a tela por 200–500 ms.",
+    corrigido: [
+      "`sdEndSession()` chamava `lv_refr_now()` da task de áudio (core 0). LVGL não é thread-safe: agora só redesenha na task do LVGL; de outra task marca pendência.",
+      "`disp_flush` e as sessões de SD usavam o `tftSPI` sem exclusão: criado o mutex `gBusMtx`."
+    ],
+    adicionado: [
+      "`.claude/napkin.md`: runbook com as regras de ouro do projeto."
+    ],
+    alterado: [
+      "`sdTryBegin(int tries)`: 2 tentativas no caminho da UI, 5 no diagnóstico.",
+      "Explorer lê a lista 40 ms depois de pintar a tela, com guarda `lv_scr_act() == scrArquivo`."
+    ],
+    arquivos: ["core.h", "ui.h", "Smartwatch.ino", ".claude/napkin.md"],
+    fonte: "STATUS.md (sessão 2026-11-10d)"
+  },
+  {
+    v: "v0.16",
+    data: "2026-11-10",
+    titulo: "Menu HyperOS, Explorer estilo Windows e o vazamento de PSRAM",
+    estado: "ok",
+    resumo:
+      "Antes do travamento aparecer: menu 3x3 com ícones pixel-art, temperatura na face, " +
+      "símbolo de Bluetooth em todas as telas e um explorador de arquivos com pastas.",
+    corrigido: [
+      "Vazamento de PSRAM em `icoCanvas` (512 B por ícone, nunca liberados).",
+      "IR bloqueava a UI, WAV bloqueava 1,4 s, `beepSpeaker()` desanexava o canal do player."
+    ],
+    adicionado: [
+      "`sdListDir()` com pastas primeiro, barra de endereço, colunas Nome | Tamanho, toque longo para apagar.",
+      "`wxApplyData()`: o clima em segundo plano também alimenta a temperatura da face."
+    ],
+    alterado: ["Matemática e Saúde passaram para o menu Config."],
+    arquivos: ["ui.h", "core.h"],
+    fonte: "STATUS.md (sessão 2026-11-10c)"
+  },
+  {
+    v: "v0.15",
+    data: "2026-11-10",
+    titulo: "Anéis da face viraram sliders rotativos de verdade",
+    estado: "ok",
+    resumo:
+      "Os três anéis eram decorativos. Passaram a girar com o dedo, com hit-test apenas na " +
+      "faixa do arco (tocar fora continua destravando o relógio) e uma única fonte de " +
+      "verdade: os passos.",
+    corrigido: [
+      "Timers de jogos checavam só `gInGame`: sair do Pong e abrir o Flappy deixava o Pong simulando e dando toast \"VOCÊ VENCEU\". Cada timer agora valida a própria tela.",
+      "Dama: captura obrigatória considerava as duas cores e travava a jogada do jogador; multi-salto e fim de jogo corrigidos.",
+      "Xadrez e Pong não tinham reinício; a bola/raquetes engoliam o toque."
+    ],
+    adicionado: [
+      "`ringHitTest()` / `ringEventCb()` / `ringApplyValue()`: girar grava só a chave `steps`.",
+      "Escalas alinhadas: passos 0..10000, km 0..70, calorias 0..400 (o app Saúde acompanhou)."
+    ],
+    alterado: [
+      "Layout de 10 telas revisado para caber em 128x160 (crono, player, moeda, imagem, fotos, IA, Wi-Fi, clima, face analógica).",
+      "2 bytes ANSI quebrados em comentários do `ui.h`."
+    ],
+    arquivos: ["ui.h", "core.h"],
+    fonte: "STATUS.md (sessão 2026-11-10)"
+  },
+  {
+    v: "v0.14",
+    data: "2026-11-09",
+    titulo: "Face padrão = a foto do usuário, e sleep com tela realmente preta",
+    estado: "hw",
+    resumo:
+      "A face Padrão foi refeita para bater com a foto: HH no topo-esquerdo, MM no meio-" +
+      "direita, anéis com a geometria original e o cluster de status no topo.",
+    corrigido: [
+      "`fakeApApply` montava \"AP falso: on/off\" e nunca aplicava no label.",
+      "Aviso \"toque p/ destravar\" aparecia sempre; agora só quando o guard de 2 toques está armado.",
+      "`sendCommand(NULL)` ambíguo no SLPIN/SLPOUT do ST7735."
+    ],
+    adicionado: [
+      "Lightsleep com SLPIN (tela 100% preta) e RTC interno contando o horário.",
+      "Migração `lock2`: o primeiro boot põe `lockStyle=2` (o device mostrava a face Digital)."
+    ],
+    alterado: [
+      "Toolbox em lista rolável de 18 itens; Tela, Clima e Ajustes restilizados (redRow/uiRowSw)."
+    ],
+    arquivos: ["ui.h", "core.h"],
+    pendente: ["Validar no pulso: face = foto, sleep preto + 2 toques, cluster wifi/BT."],
+    fonte: "STATUS.md (sessão 2026-11-09b)"
+  },
+  {
+    v: "v0.13",
+    data: "2026-11-09",
+    titulo: "Redmi Watch: chips circulares, anéis e acento laranja",
+    estado: "hw",
+    resumo:
+      "Identidade visual trocada para Redmi Watch / Mi Band: Home 3x3 de chips circulares " +
+      "com ícone branco, acento laranja Redmi e anéis de atividade na face.",
+    adicionado: [
+      "Chips circulares 36 px com cor por app, sem rótulo (estilo Mi Band).",
+      "Anéis passos/laranja, km/verde, calorias/ciano com escalas por atividade.",
+      "Ícones pixel-art 16x16 para todos os apps e jogos."
+    ],
+    alterado: [
+      "Acento padrão = laranja Redmi (`accIdx=2`, migração `redmi`).",
+      "Status bar usa `LV_SYMBOL_BLUETOOTH` em vez do texto \"BT\"."
+    ],
+    arquivos: ["ui.h", "core.h", "home_art.h"],
+    pendente: ["Validar no pulso: toque nos chips, anéis e temperatura de Campo Grande."],
+    fonte: "STATUS.md (sessão 11)"
+  },
+  {
+    v: "v0.12",
+    data: "2026-11-09",
+    titulo: "Upload coordenado de ponta a ponta (P1) e limpeza do projeto",
+    estado: "ok",
+    resumo:
+      "Plano aprovado em duas frentes: P1 corrigir o upload de arquivos e P2 a face " +
+      "Padrão. `apps.h` (29,7 KB, código morto nunca incluído) foi removido do projeto.",
+    corrigido: [
+      "Upload: `mkdir` com fallback, 2ª tentativa de `SD.open` sem desmontar o cartão, escrita em laço e conferência de tamanho no END.",
+      "`apps.h` tinha stubs de BadUSB/BadBLE que confundiam a leitura do projeto."
+    ],
+    adicionado: [
+      "Logs `[up] start/END` com mount, card, mkdir, open e total.",
+      "`preview/teste_*.html`: toda tela nova validada em HTML fiel 128x160 antes do firmware."
+    ],
+    arquivos: ["Smartwatch.ino", "ui.h", "core.h"],
+    fonte: "STATUS.md (sessões 2026-11-09c/d)"
+  },
+  {
+    v: "v0.11",
+    data: "2026-11-09",
+    titulo: "Doom em raycaster, Sonic e Mario distintos, 13 jogos",
+    estado: "ok",
+    resumo:
+      "O \"Doom\" virou um raycaster 3D propriamente dito (DDA, framebuffer 128x96 em " +
+      "PSRAM, paredes com sombra por distância, inimigos billboard com z-buffer).",
+    corrigido: ["Colisão de nome `dm?Dama` renomeada."],
+    adicionado: [
+      "Motor `dooCast`: arraste move/vira, toque atira, 6 inimigos, fase limpa reinicia.",
+      "Sonic com SPIN-DASH (toque longo = invulnerável ~1 s); Mario com pulo clássico.",
+      "Snake e prévia da próxima peça no Tetris (13 jogos no total)."
+    ],
+    alterado: ["Home com chip de ícone arredondado (watchOS)."],
+    arquivos: ["ui.h", "core.h"],
+    fonte: "STATUS.md (sessão 10)"
+  },
+  {
+    v: "v0.10",
+    data: "2026-11-09",
+    titulo: "BLE: controle de mídia e achar meu celular",
+    estado: "hw",
+    resumo:
+      "Toolbox ganhou \"Mídia BT\": <, play/pausa, >, volume, mudo e \"Achar meu celular\" " +
+      "(rajada de play/pausa faz o telefone tocar). HID próprio \"Wear-Midia\".",
+    adicionado: [
+      "Report map consumer 0x0C, report ID 1, 16-bit one-shot. Não mexe na USB/reflash.",
+      "`gBtOn` acende o ícone BT na barra."
+    ],
+    corrigido: ["Protótipos e `uiLabel` com 7 argumentos quebravam o build."],
+    arquivos: ["ui.h"],
+    pendente: ["Pareamento só dá para validar no pulso."],
+    fonte: "STATUS.md (sessão 9)"
+  },
+  {
+    v: "v0.09",
+    data: "2026-11-09",
+    titulo: "Espelho do LCD por HTTP (pixel-idêntico)",
+    estado: "hw",
+    resumo:
+      "O framebuffer 128x160 RGB565 vai cru para o navegador via `send_P` e vira canvas. " +
+      "O AP \"WearMirror\" sobe no Toolbox e a página fica idêntica ao firmware.",
+    corrigido: [
+      "Concatenação ilegal de literais C (`</scr\"+\"ipt>`) e `send()` binário trocado por `send_P`.",
+      "\"Definir do SD\" decodifica JPEG/BMP direto para 128x160 RGB565 na SPIFFS."
+    ],
+    adicionado: ["`mirrorTick()` no loop mantém o LVGL rodando com o espelho ligado."],
+    arquivos: ["ui.h", "core.h", "Smartwatch.ino"],
+    pendente: ["Validar no pulso: AP WearMirror e canvas no navegador."],
+    fonte: "STATUS.md (sessões 6–8)"
+  },
+  {
+    v: "v0.08",
+    data: "2026-11-09",
+    titulo: "App Arquivos navegável + player WAV",
+    estado: "ok",
+    resumo:
+      "O app Arquivos virou um browser real do cartão: botões Enviar/Atualizar/Info/Música " +
+      "e lista rolável. Tocar num .wav toca, num .jpg define wallpaper.",
+    adicionado: [
+      "`wpSetFromPath()`, `buildPlayer(int idx)` e `audFiles/audCount` acessíveis ao browser.",
+      "Schematic HTML com visual de placa e brilho de vidro."
+    ],
+    alterado: ["Coordenadas do appBody (46), botões e lista validados em HTML antes de flashar."],
+    arquivos: ["ui.h", "core.h"],
+    fonte: "STATUS.md (sessão 5)"
+  },
+  {
+    v: "v0.07",
+    data: "2026-11-09",
+    titulo: "Estabilidade: CS do SD travado em HIGH, retry na leitura do boot",
+    estado: "ok",
+    resumo:
+      "Primeira rodada de robustez do cartão. O CS (GPIO39) passou a ficar travado em HIGH " +
+      "no repouso, e o probe passou a reler o setor de boot até 3x.",
+    corrigido: [
+      "\"gravação: ?\" era o setor de boot falhando na primeira leitura.",
+      "Boot sem animação (a pedido)."
+    ],
+    adicionado: ["`sdTryBegin` a 4 MHz com 5 tentativas; AP do espelho em canal 1 fixo com log."],
+    alterado: ["Clima forçado para Campo Grande/MS com migração única `wxcg`."],
+    arquivos: ["core.h", "ui.h", "Smartwatch.ino"],
+    fonte: "STATUS.md (sessão 8)"
+  },
+  {
+    v: "v0.06",
+    data: "2026-11-09",
+    titulo: "Upload confiável com X-File-Size, preview e Snake",
+    estado: "ok",
+    resumo:
+      "A barra de progresso passou a usar o header `X-File-Size` (blob.size) com fallback " +
+      "\"recebendo...\". Todo arquivo recebido ganhou preview automático.",
+    adicionado: [
+      "`serverPreview()`: .jpg/.bmp abre tela cheia com \"Definir wallpaper\"; .wav toca.",
+      "Saúde com 3 anéis concêntricos progressivos (km, passos, calorias).",
+      "Snake com arraste de direção e crescimento ao comer."
+    ],
+    alterado: ["Wallpaper refatorado: `wpDecodeFile()` + `buildImgView()`."],
+    arquivos: ["Smartwatch.ino", "ui.h"],
+    fonte: "STATUS.md (sessão 7)"
+  },
+  {
+    v: "v0.05",
+    data: null,
+    quando: "Sessão 4",
+    titulo: "UI pixel a pixel dos prints + simulador de bancada",
+    estado: "hw",
+    resumo:
+      "A Home e a face Padrão passaram a ser arte RGB565 extraída 1:1 das imagens, com " +
+      "botões invisíveis sobre os ícones. Nasceu o simulador com a fiação real.",
+    adicionado: [
+      "`home_art.h` gerado por `gerar_art.py` (Home, anéis, diamantes, máscara de bateria).",
+      "9 botões invisíveis nas coordenadas exatas do print.",
+      "`simulador_schematic.html`: placa, módulos, fios por barramento e painel por módulo."
+    ],
+    alterado: ["`appChipIco()` removido: a Home é arte + header dinâmico."],
+    corrigido: ["Colisão de nome `S` (helper SVG x estado) e typos de cor CSS."],
+    arquivos: ["ui.h", "home_art.h", "gerar_art.py", "simulador.html"],
+    pendente: ["Imagens da face analógica e digital não chegaram."],
+    fonte: "STATUS.md (sessão 4)"
+  },
+  {
+    v: "v0.04",
+    data: null,
+    quando: "Sessão 3",
+    titulo: "Upload: a resposta saía no handler errado",
+    estado: "ok",
+    resumo:
+      "Toda página dizia \"falha ao enviar\" porque `sdWeb.send()` era chamado dentro do " +
+      "`webUpFile()` (handler de upload). A resposta só pode sair no handler do POST.",
+    corrigido: [
+      "Resposta do upload movida para `webUpDone()`.",
+      "Conversão no navegador: imagem para JPEG 128x160 (cover-crop), música para WAV 8 kHz mono."
+    ],
+    adicionado: [
+      "Abas Imagens/Vídeos/Músicas e lista do SD por `GET /list`.",
+      "Barra de progresso nos dois lados (navegador e TFT)."
+    ],
+    alterado: ["Tela do servidor validada em HTML fiel 128x160 antes do firmware (barra y=120)."],
+    arquivos: ["Smartwatch.ino", "ui.h"],
+    fonte: "STATUS.md (sessão 3)"
+  },
+  {
+    v: "v0.03",
+    data: null,
+    quando: "Sessão 2",
+    titulo: "Reboot ao abrir apps: nav() vazava a tela anterior",
+    estado: "ok",
+    resumo:
+      "Abrir e fechar apps reiniciava o relógio. O `nav()` nunca apagava a tela anterior " +
+      "(`delOld=false`), e o heap do LVGL vazava até o crash.",
+    corrigido: [
+      "`nav()` agora apaga a tela anterior; Home e Lock ficam preservadas.",
+      "6 botões \"Voltar\" dependiam da tela destruída: passaram a recriar o alvo."
+    ],
+    adicionado: [
+      "3 watch faces (Digital, Analógico, Padrão) e 8 temas de cor.",
+      "Wallpaper a partir do SD gravado cru na SPIFFS (`/wp.bin`).",
+      "Clima de Campo Grande/MS (lat -20.4428, lon -54.6464) com migração `wxcg=2`."
+    ],
+    arquivos: ["ui.h", "core.h"],
+    fonte: "STATUS.md (sessão 2)"
+  },
+  {
+    v: "v0.02",
+    data: null,
+    quando: "Sessão 1",
+    titulo: "SD no barramento compartilhado com o TFT",
+    estado: "ok",
+    resumo:
+      "TFT e SD dividem SCK=9, MOSI=10 e MISO=34. O SD estava numa instância HSPI separada " +
+      "com o mesmo MISO, e a detecção saía invertida (conectado = ausente).",
+    corrigido: [
+      "SD passou a usar o `tftSPI` (mesmo host do TFT, sem re-begin).",
+      "`sdProbe` monta/desmonta e `sdTryBegin` tenta 3x."
+    ],
+    arquivos: ["core.h", "ui.h"],
+    fonte: "STATUS.md (correção do SD)"
+  },
+  {
+    v: "v0.01",
+    data: null,
+    quando: "Sessões anteriores",
+    titulo: "Base do relógio: player WAV e teclado Bluetooth",
+    estado: "hw",
+    resumo:
+      "Antes do histórico detalhado: o relógio já tocava música do cartão e funcionava " +
+      "como teclado Bluetooth. As sessões seguintes partiram daqui.",
+    corrigido: [
+      "BLE Scan: a lib BLE nunca entrava no build, então o scan simplesmente não existia."
+    ],
+    adicionado: [
+      "Player WAV: SD -> PSRAM -> PWM no core 0, com conversão MP3/MP4/etc para WAV 8 kHz mono no navegador.",
+      "BadBLE: teclado HID + `/duck.txt` (Ducky-lite)."
+    ],
+    arquivos: ["ui.h", "core.h", "Smartwatch.ino"],
+    pendente: ["Validar no pulso: parear como \"Wear-KB\" e rodar o script."],
+    fonte: "STATUS.md - 'Feito em sessões anteriores'"
+  }
+];
+
+</script>
+<script>
+// ============================================================
+//  Render do historico. Depende de assets/versoes.js (window.VERSOES).
+// ============================================================
+
+(function () {
+  "use strict";
+
+  var lista = document.getElementById("lista");
+  var campo = document.getElementById("busca");
+  var filtros = Array.prototype.slice.call(document.querySelectorAll(".filtro"));
+  var aviso = document.getElementById("resultado");
+
+  var dados = Array.isArray(window.VERSOES) ? window.VERSOES.slice() : [];
+  var filtroAtual = "todos";
+
+  // ---------- utilidades ----------
+
+  function escapa(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // `texto` -> <code>texto</code>, depois de escapar o HTML.
+  function inline(s) {
+    return escapa(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+  }
+
+  function idDe(v) {
+    return v.toLowerCase().replace(/\./g, "-");
+  }
+
+  function quandoTexto(item) {
+    if (item.data) {
+      var p = item.data.split("-");
+      return p[2] + "/" + p[1] + "/" + p[0];
+    }
+    return item.quando || "";
+  }
+
+  function plural(n, um, muitos) {
+    return n + " " + (n === 1 ? um : muitos);
+  }
+
+  // "associacao" tambem acha "associação"
+  function semAcento(s) {
+    return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function textoBusca(item) {
+    return semAcento(
+      [
+        item.v,
+        item.data || "",
+        item.quando || "",
+        item.titulo,
+        item.resumo,
+        item.fonte || "",
+        (item.corrigido || []).join(" "),
+        (item.adicionado || []).join(" "),
+        (item.alterado || []).join(" "),
+        (item.arquivos || []).join(" "),
+        (item.pendente || []).join(" ")
+      ]
+        .join(" ")
+        .toLowerCase()
+    );
+  }
+
+  // ---------- montagem ----------
+
+  function grupo(classe, rotulo, itens) {
+    if (!itens || !itens.length) return "";
+    var lis = itens.map(function (t) { return "<li>" + inline(t) + "</li>"; }).join("");
+    return (
+      '<div class="grupo ' + classe + '">' +
+      "<h3>" + rotulo + "</h3>" +
+      "<ul>" + lis + "</ul>" +
+      "</div>"
+    );
+  }
+
+  function cartao(item, indice) {
+    var id = idDe(item.v);
+    var nF = (item.corrigido || []).length;
+    var nA = (item.adicionado || []).length;
+    var nC = (item.alterado || []).length;
+    var nP = (item.pendente || []).length;
+    var estadoRotulo =
+      item.estado === "hw" ? "validar no relogio" :
+      item.estado === "aberto" ? "bug aberto" : "resolvido";
+
+    var contagem = [];
+    if (nF) contagem.push("<span>" + plural(nF, "correcao", "correcoes") + "</span>");
+    if (nA) contagem.push("<span>" + plural(nA, "adicao", "adicoes") + "</span>");
+    if (nC) contagem.push("<span>" + plural(nC, "mudanca", "mudancas") + "</span>");
+    if (nP) contagem.push("<span>" + plural(nP, "pendencia", "pendencias") + "</span>");
+
+    var rodape = "";
+    if (item.arquivos && item.arquivos.length) {
+      rodape +=
+        '<div><span class="rot">Arquivos</span>' +
+        item.arquivos.map(inline).join(" · ") +
+        "</div>";
+    }
+    if (item.fonte) {
+      rodape += '<div><span class="rot">Fonte</span>' + inline(item.fonte) + "</div>";
+    }
+    if (item.pendente && item.pendente.length) {
+      rodape +=
+        '<div class="pendente"><span class="rot">Pendente</span>' +
+        item.pendente.map(inline).join(" | ") +
+        "</div>";
+    }
+
+    return (
+      '<div class="linha">' +
+      '<div class="quando">' +
+      '<b><a href="#' + id + '">' + escapa(item.v) + "</a></b>" +
+      "<span>" + escapa(quandoTexto(item)) + "</span>" +
+      "</div>" +
+      '<div class="card">' +
+      "<details" + (indice === 0 ? " open" : "") + ' id="' + id + '">' +
+      "<summary>" +
+      '<div class="titulo"><h2>' + inline(item.titulo) + "</h2>" +
+      '<span class="estado ' + (item.estado || "ok") + '">' + estadoRotulo + "</span>" +
+      "</div>" +
+      '<div class="contagem">' + contagem.join("") + "</div>" +
+      '<span class="seta" aria-hidden="true">' +
+      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l5 5-5 5"/></svg>' +
+      "</span>" +
+      "</summary>" +
+      '<div class="corpo">' +
+      '<p class="resumo">' + inline(item.resumo) + "</p>" +
+      '<div class="grupos">' +
+      grupo("corrigido", "Corrigido", item.corrigido) +
+      grupo("adicionado", "Adicionado", item.adicionado) +
+      grupo("alterado", "Alterado", item.alterado) +
+      "</div>" +
+      (rodape ? '<div class="rodape-versao">' + rodape + "</div>" : "") +
+      "</div>" +
+      "</details>" +
+      "</div>" +
+      "</div>"
+    );
+  }
+
+  function render() {
+    var termo = semAcento((campo.value || "").trim().toLowerCase());
+    var visiveis = dados.filter(function (item) {
+      if (filtroAtual !== "todos" && (item.estado || "ok") !== filtroAtual) return false;
+      if (!termo) return true;
+      return textoBusca(item).indexOf(termo) !== -1;
+    });
+
+    if (!visiveis.length) {
+      lista.innerHTML = '<p class="vazio">Nenhuma versao para esse filtro.</p>';
+      aviso.textContent = "0 versoes";
+      return;
+    }
+
+    lista.innerHTML = visiveis.map(cartao).join("");
+
+    // mantem o item aberto quando o filtro nao muda a ordem visivel
+    var primeiro = lista.querySelector("details");
+    if (primeiro) primeiro.open = true;
+
+    aviso.textContent =
+      "Mostrando " + visiveis.length + " de " + dados.length + " versoes.";
+
+    ligarAncoras();
+  }
+
+  // abrir a versao apontada pelo #hash
+  function ligarAncoras() {
+    var alvo = location.hash.replace("#", "");
+    if (!alvo) return;
+    var el = document.getElementById(alvo);
+    if (!el) return;
+    var det = el.tagName === "DETAILS" ? el : el.querySelector("details");
+    if (det) det.open = true;
+  }
+
+  // ---------- filtros ----------
+
+  filtros.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      filtroAtual = btn.dataset.estado;
+      filtros.forEach(function (b) {
+        b.setAttribute("aria-pressed", String(b === btn));
+      });
+      render();
+    });
+  });
+
+  campo.addEventListener("input", render);
+
+  window.addEventListener("hashchange", ligarAncoras);
+
+  // ---------- contadores nos chips ----------
+
+  function contar(estado) {
+    return dados.filter(function (i) {
+      return estado === "todos" || (i.estado || "ok") === estado;
+    }).length;
+  }
+
+  filtros.forEach(function (btn) {
+    var n = btn.querySelector(".n");
+    if (n) n.textContent = contar(btn.dataset.estado);
+  });
+
+  // ---------- cabecalho: totais ----------
+
+  var totalEl = document.getElementById("total-versoes");
+  var ultimaEl = document.getElementById("ultima-data");
+  if (totalEl) totalEl.textContent = String(dados.length);
+  if (ultimaEl) {
+    var comData = dados.filter(function (i) { return i.data; });
+    if (comData.length) ultimaEl.textContent = quandoTexto(comData[0]);
+  }
+
+  // ---------- tema ----------
+
+  var botaoTema = document.getElementById("tema");
+  var raiz = document.documentElement;
+
+  function aplicarTema(t) {
+    raiz.setAttribute("data-tema", t);
+    if (botaoTema) {
+      botaoTema.textContent = t === "claro" ? "Tema escuro" : "Tema claro";
+      botaoTema.setAttribute("aria-pressed", String(t === "claro"));
+    }
+  }
+
+  var salvo = null;
+  try { salvo = localStorage.getItem("tema-firmware"); } catch (e) { salvo = null; }
+
+  var prefereClaro =
+    window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+
+  aplicarTema(salvo || (prefereClaro ? "claro" : "escuro"));
+
+  if (botaoTema) {
+    botaoTema.addEventListener("click", function () {
+      var novo = raiz.getAttribute("data-tema") === "claro" ? "escuro" : "claro";
+      aplicarTema(novo);
+      try { localStorage.setItem("tema-firmware", novo); } catch (e) {}
+    });
+  }
+
+  // ---------- inicio ----------
+
+  if (!dados.length) {
+    lista.innerHTML =
+      '<p class="vazio">Nao carregou assets/versoes.js (window.VERSOES vazio).</p>';
+    return;
+  }
+
+  render();
+})();
+
+</script>
+</body>
+</html>
