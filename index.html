@@ -115,6 +115,35 @@ code {
 
 .topo .meta b { color: var(--ink); font-weight: 600; }
 
+/* ---- icones externos (repositorio / releases / youtube / instagram) ---- */
+.externos { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ext {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 11px 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--dim);
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.ext:hover { color: var(--acc); border-color: var(--acc); }
+.ext svg { width: 15px; height: 15px; display: block; flex: none; }
+.nome-versoes {
+  margin: 14px 0 0;
+  max-width: 74ch;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--dim);
+}
+.nome-versoes strong { color: var(--ink); font-weight: 600; }
+
 .tema {
   margin-left: auto;
   min-height: 44px;
@@ -224,6 +253,38 @@ code {
 }
 .quando a { color: inherit; text-decoration: none; }
 .quando a:hover { color: var(--acc); text-decoration: underline; }
+
+/* canal do release: PREV (preview, com bug/em validacao) x REALESE (completo) */
+.canal {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-family: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.canal.prev {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 34%, transparent);
+}
+.canal.realese {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 30%, transparent);
+}
+.rel {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--dim);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.rel:hover { color: var(--acc); }
 
 .card { min-width: 0; padding: 14px 0 22px; }
 
@@ -380,11 +441,18 @@ details[open] > summary .seta { transform: rotate(90deg); color: var(--acc); }
 
 /* ---------------- responsivo ---------------- */
 
+/* telas estreitas: os icones externos ficam so' com o simbolo */
+@media (max-width: 560px) {
+  .ext span { display: none; }
+  .ext { padding: 7px; min-width: 32px; justify-content: center; }
+}
+
 @media (max-width: 760px) {
   .wrap { padding: 28px 16px 56px; }
   .linha { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .quando { padding: 18px 0 0; display: flex; align-items: baseline; gap: 10px; }
+  .quando { padding: 18px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 10px; }
   .quando b { font-size: 0.95rem; }
+  .canal, .rel { margin-top: 0; }
   .card { padding: 6px 0 18px; }
   .grupos { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .topo .meta { gap: 6px 14px; }
@@ -418,8 +486,32 @@ details[open] > summary .seta { transform: rotate(90deg); color: var(--acc); }
       <span><b id="total-versoes">—</b> versões</span>
       <span>última: <b id="ultima-data">—</b></span>
       <span>ESP32-S3 N16R8 · 128×160 · LVGL 8.4</span>
+      <span class="externos">
+        <a class="ext" href="https://github.com/FelipeFlau/smartwatch" title="Repositório do firmware" aria-label="Repositório no GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.335-1.757-1.335-1.757-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.469-2.38 1.236-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22v3.293c0 .322.21.694.825.576C20.565 22.092 24 17.592 24 12.297 24 5.67 18.63.297 12 .297z"/></svg>
+          <span>Repositório</span>
+        </a>
+        <a class="ext" href="https://github.com/FelipeFlau/smartwatch/releases" title="Releases do firmware" aria-label="Releases no GitHub">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 8.4 12 15 3.4 8.4"/><path d="M3.4 8.4 12 2l8.6 6.4v9.2L12 24l-8.6-6.4z"/><path d="M12 15v9"/></svg>
+          <span>Releases</span>
+        </a>
+        <a class="ext" href="https://www.youtube.com/@Flau.Felipe" title="Canal no YouTube" aria-label="Canal no YouTube">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="1.5" y="5" width="21" height="14" rx="4" fill="currentColor"/><path d="M10 9.2v5.6L15.4 12z" fill="#0a0c10"/></svg>
+          <span>YouTube</span>
+        </a>
+        <a class="ext" href="https://www.instagram.com/flau.felipe/" title="Instagram" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.2" fill="currentColor" stroke="none"/></svg>
+          <span>Instagram</span>
+        </a>
+      </span>
       <button class="tema" id="tema" type="button" aria-pressed="false">Tema claro</button>
     </div>
+    <p class="nome-versoes">
+      Cada versão é lançada no GitHub como <strong>SmartRolex ProMx V0.NN PREV</strong>
+      (preview: ainda tem bug conhecido ou falta validar no relógio) ou
+      <strong>SmartRolex ProMx V0.NN REALESE</strong> (a correção/implementação está
+      completa e funcionando).
+    </p>
   </header>
 
   <section class="controles" aria-label="Filtros do histórico">
@@ -459,7 +551,9 @@ details[open] > summary .seta { transform: rotate(90deg); color: var(--acc); }
     </p>
     <p>
       <strong>Sobre a numeração.</strong> <code>v0.NN</code> é o índice do release na
-      ordem em que foi entregue — não é semver. O detalhe técnico completo de cada
+      ordem em que foi entregue — não é semver. No GitHub cada um virou um release
+      chamado <code>SmartRolex ProMx V0.NN PREV</code> ou
+      <code>SmartRolex ProMx V0.NN REALESE</code>. O detalhe técnico completo de cada
       rodada fica em <code>STATUS.md</code> (raiz do repositório) e, para o cartão SD,
       em <a href="analise_sd.md">analise_sd.md</a>.
     </p>
@@ -494,6 +588,39 @@ details[open] > summary .seta { transform: rotate(90deg); color: var(--acc); }
 // ============================================================
 
 window.VERSOES = [
+  {
+    v: "v0.26",
+    data: "2026-11-16",
+    titulo: "SD montado uma vez: sem reverificação no Arquivos e tela de informações",
+    estado: "hw",
+    resumo:
+      "Entrar em Arquivos remontava o cartão toda vez: o `sdTryBegin()` dava 800 ms de " +
+      "atraso antes de um `SD.begin()` que sairia na hora com o cartão já montado. E " +
+      "quando o cartão estava morto, cada acesso tentava montar de novo e despejava " +
+      "erro no serial. Agora o boot é a fonte da verdade: montou e gravou = nunca mais " +
+      "desmonta; não montou = não insiste, só o botão REMONTAR (pedido manual) tenta.",
+    corrigido: [
+      "800 ms de atraso em cada acesso ao SD: `sdTryBegin()` fazia o atraso do power-up antes de chamar o `SD.begin()`, que devolvia true na hora com o cartão já montado.",
+      "Cartão morto era martelado: `webSdEnsure()` tentava montar 4x por acesso/requisição e imprimia `mount falhou / CMD0 nao responde` sem parar.",
+      "O log do relógio mostrava a tempestade de erro (CMD0 sem resposta depois do Wi-Fi) sem nenhuma saída a não ser cortar a energia."
+    ],
+    adicionado: [
+      "Tela INFORMAÇÕES DO SD (botão `i` do Arquivos): estado, o que o boot viu (`mount/grava/card`), tipo/FAT, espaço livre, velocidade do barramento e teste de leitura do setor 0 — sem desmontar nada.",
+      "Botão REMONTAR nessa tela: a única forma de montar de novo quando o boot falhou (pedido explícito do usuário).",
+      "`gSdBoot` / `gSdBootOk` / `gSdMayMount` (core.h) e cooldown de 6 s entre tentativas de montagem."
+    ],
+    alterado: [
+      "`sdBeginSession()` só monta quando o boot montou; com o boot falho devolve \"SD ausente\" sem tocar no barramento.",
+      "`sdAlive()` mudou para `core.h` (a tela de informações do SD também usa).",
+      "`webSdStop()` devolve a permissão de montar ao estado do boot; abrir o modo enviar passa a permitir (é pedido do usuário)."
+    ],
+    arquivos: ["core.h", "ui.h", "Smartwatch.ino"],
+    pendente: [
+      "Validar no relógio: entrar em Arquivos não pode mais registrar `mount` no serial; a tela de informações deve mostrar `mount=1 grava=1 card=3` quando o boot gravou.",
+      "O sintoma do log enviado (CMD0 sem resposta após o Wi-Fi) continua sendo de hardware/energia: a tela de informações agora apenas prova isso sem derrubar o resto."
+    ],
+    fonte: "STATUS.md §27"
+  },
   {
     v: "v0.25",
     data: "2026-11-16",
@@ -1064,6 +1191,20 @@ window.VERSOES = [
     return item.quando || "";
   }
 
+  // canal do release: "prev" (ainda tem bug / falta validar) ou "realese"
+  // (completo e funcionando). Espelha o que sai no GitHub.
+  function canalDe(item) {
+    var e = item.estado || "ok";
+    return e === "ok" ? "realese" : "prev";
+  }
+  function canalRotulo(item) {
+    return canalDe(item) === "prev" ? "PREV" : "REALESE";
+  }
+  var REPO = "https://github.com/FelipeFlau/smartwatch";
+  function releaseUrl(item) {
+    return REPO + "/releases/tag/" + encodeURIComponent(item.v);
+  }
+
   function plural(n, um, muitos) {
     return n + " " + (n === 1 ? um : muitos);
   }
@@ -1113,7 +1254,7 @@ window.VERSOES = [
     var nC = (item.alterado || []).length;
     var nP = (item.pendente || []).length;
     var estadoRotulo =
-      item.estado === "hw" ? "validar no relogio" :
+      item.estado === "hw" ? "falta validar no relogio" :
       item.estado === "aberto" ? "bug aberto" : "resolvido";
 
     var contagem = [];
@@ -1144,6 +1285,9 @@ window.VERSOES = [
       '<div class="quando">' +
       '<b><a href="#' + id + '">' + escapa(item.v) + "</a></b>" +
       "<span>" + escapa(quandoTexto(item)) + "</span>" +
+      '<span class="canal ' + canalDe(item) + '">' + canalRotulo(item) + "</span>" +
+      '<a class="rel" href="' + releaseUrl(item) + '" title="Ver o release ' +
+      escapa(item.v) + ' no GitHub">release</a>' +
       "</div>" +
       '<div class="card">' +
       "<details" + (indice === 0 ? " open" : "") + ' id="' + id + '">' +
