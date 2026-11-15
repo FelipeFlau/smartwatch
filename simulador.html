@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smartwatch ESP32-S3 — Simulador (estilo Wokwi)</title>
+<style>
+:root{
+  --bg:#080b11; --panel:#0d121b; --card:#161a22; --line:#232c3d; --txt:#e7ecf5;
+  --dim:#8b90a0; --acc:#ff7a00; --ok:#3ad07f; --err:#ff5c5c; --blu:#4fc3f7;
+  --spi:#ffb300; --i2c:#b388ff; --gpio:#4fc3f7; --v3:#ff5252; --gnd:#607d8b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+  font:13px/1.45 "Segoe UI",system-ui,sans-serif;overflow:hidden}
+header{display:flex;align-items:center;gap:12px;padding:9px 14px;background:#0e131c;border-bottom:1px solid var(--line)}
+header h1{font-size:15px;margin:0;font-weight:600} header h1 b{color:var(--acc)}
+.pill{font:11px/1 ui-monospace,Consolas,monospace;padding:5px 9px;border:1px solid var(--line);border-radius:20px;color:var(--dim)}
+.led{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:-1px}
+.led.on{background:var(--ok);box-shadow:0 0 8px var(--ok)} .led.off{background:#39414f}
+.spacer{flex:1}
+button,select,input[type=text]{background:#1b2331;color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font:inherit;cursor:pointer}
+button:hover{background:#222c3d;border-color:#31405a} button.pri{background:#2a1c10;border-color:#5a3a14;color:#ffb45c}
+main{display:grid;grid-template-columns:1fr 400px;height:calc(100vh - 47px)}
+#stage{overflow:auto;padding:8px;background:
+  radial-gradient(900px 600px at 60% 20%,#101724,#080b11)}
+#sch{display:block;width:1400px;height:1100px}
+aside{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;overflow:hidden}
+.tabs{display:flex;gap:3px;padding:8px 8px 0;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.tabs button{font-size:11px;padding:5px 8px;border-radius:6px 6px 0 0;background:#141a25}
+.tabs button.on{background:var(--card);border-color:var(--acc);color:#ffb45c}
+#panel{padding:10px;overflow:auto;flex:1}
+#panel h4{margin:2px 0 8px;font-size:11px;color:var(--acc);text-transform:uppercase;letter-spacing:.7px}
+.row{margin-bottom:9px} .row label{display:flex;justify-content:space-between;color:var(--dim);font-size:11px;margin-bottom:3px}
+.row label b{color:var(--txt);font-family:ui-monospace,Consolas,monospace}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.chk{display:flex;align-items:center;gap:7px;color:var(--dim);font-size:12px;margin-bottom:6px}
+.chk input{accent-color:var(--acc)}
+.hint{color:var(--dim);font-size:11px;margin-top:6px;line-height:1.5}
+.kv{display:flex;justify-content:space-between;gap:8px;color:var(--dim);font-size:11.5px;border-bottom:1px dashed #1d2534;padding:3px 0}
+.kv b{color:var(--txt);font-weight:500;font-family:ui-monospace,Consolas,monospace}
+pre#ser{margin:0;padding:8px 10px;height:190px;overflow:auto;background:#06090e;border-top:1px solid var(--line);
+  font:11px/1.5 ui-monospace,Consolas,monospace;color:#9fb0c8;white-space:pre-wrap}
+pre#ser .e{color:var(--err)} pre#ser .w{color:#ffc857} pre#ser .g{color:var(--ok)} pre#ser .i{color:var(--blu)}
+/* --------- tela do relógio (1:1, 128x160 lógicos, dentro do módulo Display) --------- */
+#lcd{width:128px;height:160px;background:#000;position:relative;overflow:hidden;cursor:crosshair;
+  font-family:"Montserrat","Segoe UI",system-ui,sans-serif}
+#lcd *{position:absolute;box-sizing:border-box;font-family:inherit}
+#lcd .scr{position:absolute;inset:0}
+.abs{position:absolute}
+.chip{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;border:1px solid #ffffff33}
+.card{position:absolute;background:#161a22;border-radius:9px}
+.btn{position:absolute;background:#161a22;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#f4f5f7;text-align:center;line-height:1}
+.rowitem{position:absolute;background:#161a22;border-radius:9px;display:flex;align-items:center;color:#f4f5f7}
+.backbtn{position:absolute;background:#161a22;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#ff7a00}
+.title{position:absolute;color:#ff7a00}
+.st{position:absolute;color:#8b90a0}
+</style>
+</head>
+<body>
+<header>
+  <h1>⏱ Smartwatch <b>ESP32-S3</b> — simulador Wokwi-style</h1>
+  <span class="pill"><span class="led on"></span>POWER</span>
+  <span class="pill"><span class="led on"></span>RUN</span>
+  <span class="pill" id="pillTime">--:--</span>
+  <span class="pill" id="pillFace">Redmi</span>
+  <div class="spacer"></div>
+  <button id="btnLock">Bloquear</button>
+  <button id="btnReset" class="pri">Reiniciar</button>
+</header>
+<main>
+  <section id="stage">
+    <svg id="sch" viewBox="0 0 1400 1100"></svg>
+  </section>
+  <aside>
+    <div class="tabs" id="tabs"></div>
+    <div id="panel"></div>
+    <pre id="ser"></pre>
+  </aside>
+</main>
+<script>
+"use strict";
+/* =====================================================================
+   SIMULADOR DO SMARTWATCH (estilo Wokwi)
+   - esquema com a arte real da placa ESP32-S3 Super Mini (espboards.dev)
+   - fiação roteada corretamente (canais únicos, barramento SPI compartilhado)
+   - a tela 128x160 (pixels exatos) DENTRO do módulo Display
+   - painel por módulo que altera a simulação
+   ===================================================================== */
+const ASSET = "assets/esp32-s3-super-mini.png";
+const COL = {spi:"#ffb300", i2c:"#b388ff", gpio:"#4fc3f7", v3:"#ff5252", gnd:"#607d8b", i2c2:"#b388ff"};
+
+/* ---------------- estado ---------------- */
+const S = { screen:"lock", style:2, acc:2, batt:98, wifi:false, ble:false, steps:4210,
+            bright:80, rot:false, ringShow:null, heap:213000, t:new Date(),
+            wxTemp:31, wxDesc:"Ensolarado", wxKind:0 };
+const MOD = {
+  display:{sel:"2"}, touch:{on:true,dx:0,dy:0,show:false},
+  sd:{present:true,list:"foto1.jpg,foto2.bmp,musica.wav,notas.txt"},
+  mpu:{ok:true,x:0,y:0,walk:false}, ir:{rx:false}, spk:{on:true}, bat:{pct:98},
+  net:{wifi:false,ssid:"",ble:false}
+};
+
+/* ---------------- serial ---------------- */
+const ser=document.getElementById("ser");
+function log(t,c){const d=document.createElement("span"); if(c)d.className=c;
+  d.textContent="["+new Date().toTimeString().slice(0,8)+"] "+t+"\n"; ser.appendChild(d); ser.scrollTop=ser.scrollHeight;}
+
+/* =====================================================================
+   ESQUEMA
+   ===================================================================== */
+const BOARD = { x:430, y:120, w:330, h:445, s:0.275 };      // arte 1200x1619
+const IMG_W = 1200, IMG_H = 1619;
+const bx = px => BOARD.x + px*BOARD.s;                    // coordenada da imagem -> svg
+const by = py => BOARD.y + py*BOARD.s;
+
+/* pinos reais da placa (medidos na arte) */
+const PINS_L = [ ["48",227],["TX",298],["RX",377],["BOOT",448],["1",526],["2",597],["3",675],
+                 ["4",746],["5",824],["6",896],["7",973] ];
+const PINS_R = [ ["BAT",224],["5V",296],["GND",374],["3V3",445],["13",594],["12",673],["11",744],
+                 ["10",822],["9",971],["8",1042] ];
+const EDGE_X_L = bx(106), EDGE_X_R = bx(1094);
+
+/* pads traseiros (pinos 14..48 ficam no verso) */
+const REAR = { x:430, y:600, w:330, h:200 };
+const REAR_PADS = {
+  "38":{x:470,y:640}, "37":{x:470,y:680}, "34":{x:470,y:720}, "33":{x:470,y:760},
+  "36":{x:720,y:640}, "35":{x:720,y:680}, "48r":{x:720,y:720}, "39":{x:720,y:760}
+};
+
+/* barramento SPI (3 linhas) */
+const SPI_Y = {SCK:900, MOSI:925, MISO:950};
+const SPI_X0 = 370, SPI_X1 = 1180;
+
+/* módulos: pinos de sinal de um lado, pinos de alimentação do outro */
+const MODULES = {
+  bat:  {x:90, y:60,  w:250, h:120, pcb:"#3a4a5c", t:"Bateria LiPo", s:"3.7V · ADC1", side:"R",
+         pins:[["BAT+",26]], pins2:[["GND",54],["3V3",82]]},
+  sd:   {x:90, y:230, w:250, h:170, pcb:"#24406b", t:"Cartão SD", s:"SPI · CS=39", side:"R",
+         pins:[["CS",30],["SCK",58],["MOSI",86],["MISO",114]], pins2:[["VCC",40],["GND",70]]},
+  mpu:  {x:90, y:450, w:250, h:120, pcb:"#3b2c5c", t:"MPU-6050", s:"I²C · 38/37", side:"R",
+         pins:[["SDA",40],["SCL",70]], pins2:[["VCC",30],["GND",60]]},
+  ir:   {x:90, y:610, w:250, h:110, pcb:"#4a3a2c", t:"IR LED + RX 38kHz", s:"TX=3 · RX=2", side:"R",
+         pins:[["TX",40],["RX",70]], pins2:[["VCC",30],["GND",60]]},
+  spk:  {x:90, y:760, w:250, h:100, pcb:"#2c4a3a", t:"Speaker", s:"PWM GPIO5", side:"R",
+         pins:[["SPK",45]], pins2:[["GND",30]]},
+  disp: {x:950,y:60,  w:250, h:340, pcb:"#1d5c3a", t:"Display ST7735 1.8\"", s:"128×160 · SPI", side:"L",
+         pins:[["SCK",120],["MOSI",145],["MISO",170],["CS",195],["DC",220],["RST",245],["BL",270]],
+         pins2:[["VCC",230],["GND",255]]},
+  touch:{x:990,y:470, w:230, h:200, pcb:"#1d4a5c", t:"Touch XPT2046", s:"CS=36 · IRQ=35", side:"L",
+         pins:[["SCK",40],["MOSI",66],["MISO",92],["CS",118],["IRQ",144]], pins2:[["VCC",30],["GND",56]]}
+};
+function pinPos(id,name){
+  const m=MODULES[id];
+  let p=m.pins.find(p=>p[0]===name), side=m.side;
+  if(!p && m.pins2){ p=m.pins2.find(p=>p[0]===name); side = side==="L"?"R":"L"; }
+  if(!p) return null;
+  return { x: side==="L" ? m.x : m.x+m.w, y: m.y+p[1], name, side };
+}
+function boardPin(gpio){                       // âncora de um pino da placa
+  if(gpio==="BAT") return {x:EDGE_X_R,y:by(224),side:"R"};
+  if(gpio==="5V")  return {x:EDGE_X_R,y:by(296),side:"R"};
+  if(gpio==="GND") return {x:EDGE_X_R,y:by(374),side:"R"};
+  if(gpio==="3V3") return {x:EDGE_X_R,y:by(445),side:"R"};
+  let l=PINS_L.find(p=>p[0]===gpio); if(l) return {x:EDGE_X_L,y:by(l[1]),side:"L"};
+  let r=PINS_R.find(p=>p[0]===gpio); if(r) return {x:EDGE_X_R,y:by(r[1]),side:"R"};
+  let rp=REAR_PADS[gpio];   if(rp) return {x:rp.x,y:rp.y,side:"R",rear:true};
+  return null;
+}
+function wire(a,b,ch,color,opts){              // rota Manhattan com canal único
+  opts=opts||{};
+  const d = opts.via ? `M${a.x},${a.y} ${opts.via}` : `M${a.x},${a.y} H${ch} V${b.y} H${b.x}`;
+  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.7" stroke-linejoin="round" opacity=".9"/>`;
+}
+function buildSchematic(){
+  const svg=document.getElementById("sch");
+  let h=`<defs>
+    <pattern id="bg" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="26" height="26" fill="#0a0e15"/><circle cx="13" cy="13" r="1" fill="#131a26"/></pattern>
+    <filter id="sel" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>`;
+  h+=`<rect width="1400" height="1100" fill="url(#bg)"/>`;
+
+  /* ---- barramentos de alimentação (topo) ---- */
+  const BUS_V3 = 30, BUS_GND = 52;
+  h+=`<line x1="40" y1="${BUS_V3}" x2="1360" y2="${BUS_V3}" stroke="${COL.v3}" stroke-width="2.4"/>`;
+  h+=`<text x="40" y="${BUS_V3-7}" fill="${COL.v3}" font-size="11" font-family="ui-monospace">+3V3</text>`;
+  h+=`<line x1="40" y1="${BUS_GND}" x2="1360" y2="${BUS_GND}" stroke="${COL.gnd}" stroke-width="2.4"/>`;
+  h+=`<text x="1360" y="${BUS_GND-7}" fill="${COL.gnd}" font-size="11" text-anchor="end" font-family="ui-monospace">GND</text>`;
+
+  /* ---- barramento SPI (3 linhas) ---- */
+  ["SCK","MOSI","MISO"].forEach(s=>{
+    h+=`<line x1="${SPI_X0}" y1="${SPI_Y[s]}" x2="${SPI_X1}" y2="${SPI_Y[s]}" stroke="${COL.spi}" stroke-width="2.6" opacity=".95"/>`;
+    h+=`<text x="${SPI_X0+6}" y="${SPI_Y[s]-6}" fill="${COL.spi}" font-size="11" font-family="ui-monospace">${s}</text>`;
+  });
+  h+=`<text x="${SPI_X1-4}" y="${SPI_Y.MISO+18}" fill="${COL.spi}" font-size="11" text-anchor="end" font-family="ui-monospace">
+        SPI COMPARTILHADO — TFT · Touch · SD (SCK=9 · MOSI=10 · MISO=34)</text>`;
+
+  /* ---- placa ESP32-S3 Super Mini (arte real) ---- */
+  h+=`<image href="${ASSET}" x="${BOARD.x}" y="${BOARD.y}" width="${BOARD.w}" height="${BOARD.h}" preserveAspectRatio="none"/>`;
+  h+=`<rect x="${BOARD.x}" y="${BOARD.y}" width="${BOARD.w}" height="${BOARD.h}" fill="none" stroke="#ff7a00" stroke-width="1" opacity=".35" rx="6"/>`;
+  h+=`<text x="${BOARD.x+BOARD.w/2}" y="${BOARD.y-10}" fill="#ffb45c" font-size="12" text-anchor="middle" font-family="ui-monospace">ESP32-S3 Super Mini (N4R2)</text>`;
+  /* marcadores dos pinos usados */
+  const used = [["1",0x3ad07f],["2",0x3ad07f],["3",0x3ad07f],["5",0x3ad07f],["8",0x4fc3f7],["9",0xffb300],
+                ["10",0xffb300],["11",0x4fc3f7],["12",0x4fc3f7],["13",0x4fc3f7],["3V3",0xff5252],["GND",0x607d8b],["BAT",0xff5252]];
+  used.forEach(([g,c])=>{
+    const p=boardPin(g); if(!p) return;
+    h+=`<circle cx="${p.x}" cy="${p.y}" r="4.5" fill="${c}" stroke="#0a0e15" stroke-width="1.5"/>`;
+    const tx = p.side==="L" ? p.x-9 : p.x+9;
+    h+=`<text x="${tx}" y="${p.y+3.5}" fill="${c}" font-size="10" text-anchor="${p.side==="L"?"end":"start"}" font-family="ui-monospace">${g}</text>`;
+  });
+  /* painel dos pads traseiros */
+  h+=`<g><rect x="${REAR.x}" y="${REAR.y}" width="${REAR.w}" height="${REAR.h}" rx="8" fill="#0f1620" stroke="#2a3444" stroke-dasharray="5 4"/>`;
+  h+=`<text x="${REAR.x+REAR.w/2}" y="${REAR.y-10}" fill="#9fb0c8" font-size="11" text-anchor="middle" font-family="ui-monospace">PADS TRASEIROS (GPIO 14–48)</text>`;
+  Object.entries(REAR_PADS).forEach(([k,p])=>{
+    const col = ["38","37","34"].includes(k) ? COL.i2c : (k==="39"?COL.gpio:"#4a5568");
+    h+=`<circle cx="${p.x}" cy="${p.y}" r="5" fill="${col}" stroke="#0a0e15" stroke-width="1.5"/>`;
+    h+=`<text x="${p.x+9}" y="${p.y+3.5}" fill="${col}" font-size="10" font-family="ui-monospace">${k.replace("r","")}</text>`;
+  });
+  h+=`</g>`;
+
+  /* ---- módulos ---- */
+  Object.entries(MODULES).forEach(([id,m])=>{
+    h+=`<g class="mod" data-mod="${id}" style="cursor:pointer">
+      <rect class="modbg" x="${m.x}" y="${m.y}" width="${m.w}" height="${m.h}" rx="9" fill="${m.pcb}" stroke="#00000066" stroke-width="2"/>
+      <rect x="${m.x+7}" y="${m.y+7}" width="${m.w-14}" height="${m.h-30}" rx="5" fill="#101722" stroke="#00000055"/>
+      <text x="${m.x+12}" y="${m.y+23}" fill="#dfe7f3" font-size="12" font-family="ui-monospace" font-weight="600">${m.t}</text>
+      <text x="${m.x+12}" y="${m.y+36}" fill="#8b97a8" font-size="10" font-family="ui-monospace">${m.s}</text>`;
+    /* pinos */
+    const drawPins=(list,side)=>list.forEach(([n,oy])=>{
+      const px_ = side==="L" ? m.x : m.x+m.w;
+      const c = n.startsWith("SCK")||n==="MOSI"||n==="MISO" ? COL.spi :
+                n==="SDA"||n==="SCL" ? COL.i2c :
+                n==="VCC"||n==="3V3"||n==="BAT+" ? COL.v3 :
+                n==="GND" ? COL.gnd : COL.gpio;
+      h+=`<rect x="${px_-6}" y="${m.y+oy-5}" width="12" height="10" rx="2" fill="#c9a227" stroke="#6b5a1a"/>`;
+      h+=`<text x="${px_+(side==="L"?-12:12)}" y="${m.y+oy+3.5}" fill="${c}" font-size="10" text-anchor="${side==="L"?"end":"start"}" font-family="ui-monospace">${n}</text>`;
+    });
+    drawPins(m.pins,m.side);
+    if(m.pins2) drawPins(m.pins2, m.side==="L"?"R":"L");
+    h+=`</g>`;
+  });
+  /* arte extra: slot do SD, chip do MPU, LED do IR, cone do speaker, bateria */
+  h+=`<g opacity=".9">
+    <rect x="80" y="285" width="40" height="26" rx="3" fill="#c8c8c8" stroke="#8a8a8a"/><rect x="86" y="291" width="28" height="14" rx="1" fill="#9aa3b5"/>
+    <rect x="105" y="492" width="34" height="34" rx="3" fill="#15171b" stroke="#000"/><text x="122" y="514" fill="#8b90a0" font-size="8" text-anchor="middle" font-family="ui-monospace">MPU</text>
+    <circle cx="100" cy="648" r="9" fill="#ff5252" opacity=".85"/><circle cx="130" cy="648" r="7" fill="#20242c" stroke="#3a4250"/>
+    <path d="M90,812 l30,-14 v28 z" fill="#3a4250"/><path d="M120,812 l30,-14 v28 z" fill="#3a4250"/><rect x="150" y="800" width="12" height="24" rx="2" fill="#8a8f99"/>
+    <rect x="86" y="86" width="44" height="52" rx="5" fill="#1a2029" stroke="#39424f"/><text x="108" y="118" fill="#3ad07f" font-size="10" text-anchor="middle" font-family="ui-monospace">3.7</text>
+  </g>`;
+  /* a tela real dentro do módulo Display */
+  h+=`<foreignObject x="${MODULES.disp.x+72}" y="${MODULES.disp.y+52}" width="128" height="160">
+      <div xmlns="http://www.w3.org/1999/xhtml" id="lcd"></div></foreignObject>`;
+  h+=`<rect x="${MODULES.disp.x+68}" y="${MODULES.disp.y+48}" width="136" height="168" rx="4" fill="#000" stroke="#39424f" stroke-width="2"/>`;
+  h+=`<text x="${MODULES.disp.x+72}" y="${MODULES.disp.y+42}" fill="#6b7684" font-size="9.5" font-family="ui-monospace">128 × 160 px (1:1)</text>`;
+
+  /* ================= FIAÇÃO ================= */
+  const W=[];
+  const toBus=(a,busY,ch,color)=>`<path d="M${a.x},${a.y} H${ch} V${busY}" fill="none" stroke="${color}" stroke-width="1.7" stroke-linejoin="round"/>`;
+  const dP=n=>pinPos("disp",n), tP=n=>pinPos("touch",n), sP=n=>pinPos("sd",n),
+        mP=n=>pinPos("mpu",n), iP=n=>pinPos("ir",n), kP=n=>pinPos("spk",n), bP=n=>pinPos("bat",n);
+
+  /* ---- alimentação: tudo sobe para os barramentos do topo ---- */
+  W.push(toBus(dP("VCC"), BUS_V3, 1240, COL.v3));
+  W.push(toBus(dP("GND"), BUS_GND,1258, COL.gnd));
+  W.push(toBus(tP("VCC"), BUS_V3, 1276, COL.v3));
+  W.push(toBus(tP("GND"), BUS_GND,1294, COL.gnd));
+  W.push(toBus(sP("VCC"), BUS_V3, 44,   COL.v3));
+  W.push(toBus(sP("GND"), BUS_GND,28,   COL.gnd));
+  W.push(toBus(mP("VCC"), BUS_V3, 44,   COL.v3));
+  W.push(toBus(mP("GND"), BUS_GND,28,   COL.gnd));
+  W.push(toBus(iP("VCC"), BUS_V3, 44,   COL.v3));
+  W.push(toBus(iP("GND"), BUS_GND,28,   COL.gnd));
+  W.push(toBus(kP("GND"), BUS_GND,28,   COL.gnd));
+  W.push(toBus(bP("GND"), BUS_GND,28,   COL.gnd));
+  W.push(toBus(bP("3V3"), BUS_V3, 44,   COL.v3));
+  { const a=boardPin("3V3"), b=boardPin("GND");
+    W.push(`<path d="M${a.x},${a.y} H${a.x+18} V${BUS_V3}" fill="none" stroke="${COL.v3}" stroke-width="1.7"/>`);
+    W.push(`<path d="M${b.x},${b.y} H${a.x+32} V${BUS_GND}" fill="none" stroke="${COL.gnd}" stroke-width="1.7"/>`); }
+
+  /* ---- Display -> pinos da direita da placa (8..13) ---- */
+  W.push(wire(dP("CS"),  boardPin("13"), 810, COL.gpio));
+  W.push(wire(dP("DC"),  boardPin("12"), 830, COL.gpio));
+  W.push(wire(dP("RST"), boardPin("11"), 850, COL.gpio));
+  W.push(wire(dP("BL"),  boardPin("8"),  870, COL.gpio));
+
+  /* ---- Touch -> pads traseiros 36 (CS) e 35 (IRQ) ---- */
+  { const a=tP("CS"),  b=boardPin("36");
+    W.push(`<path d="M${a.x},${a.y} H960 V${b.y} H${b.x}" fill="none" stroke="${COL.gpio}" stroke-width="1.7" stroke-linejoin="round"/>`); }
+  { const a=tP("IRQ"), b=boardPin("35");
+    W.push(`<path d="M${a.x},${a.y} H940 V${b.y} H${b.x}" fill="none" stroke="${COL.gpio}" stroke-width="1.7" stroke-linejoin="round"/>`); }
+
+  /* ---- SD -> pad traseiro 39 (CS) ---- */
+  { const a=sP("CS"), b=boardPin("39");
+    W.push(`<path d="M${a.x},${a.y} H386 V840 H${b.x} V${b.y}" fill="none" stroke="${COL.gpio}" stroke-width="1.7" stroke-linejoin="round"/>`); }
+
+  /* ---- MPU -> pads traseiros 38 (SDA) e 37 (SCL) ---- */
+  { const a=mP("SDA"), b=boardPin("38");
+    W.push(`<path d="M${a.x},${a.y} H398 V${b.y+40} H${b.x} V${b.y}" fill="none" stroke="${COL.i2c}" stroke-width="1.7" stroke-linejoin="round"/>`); }
+  { const a=mP("SCL"), b=boardPin("37");
+    W.push(`<path d="M${a.x},${a.y} H406 V${b.y+80} H${b.x} V${b.y}" fill="none" stroke="${COL.i2c}" stroke-width="1.7" stroke-linejoin="round"/>`); }
+
+  /* ---- IR / SPK -> pinos da esquerda da placa (3, 2, 5) ---- */
+  W.push(wire(iP("TX"), boardPin("3"), 414, COL.gpio));
+  W.push(wire(iP("RX"), boardPin("2"), 420, COL.gpio));
+  W.push(wire(kP("SPK"),boardPin("5"), 426, COL.gpio));
+
+  /* ---- Bateria -> pad BAT da placa (direita, topo) ---- */
+  { const a=bP("BAT+"), b=boardPin("BAT");
+    W.push(`<path d="M${a.x},${a.y} H${a.x+26} V88 H${b.x+70} V${b.y} H${b.x}" fill="none" stroke="${COL.v3}" stroke-width="1.7" stroke-linejoin="round"/>`); }
+
+  /* ---- taps do barramento SPI (3 sinais, 3 barras) ---- */
+  const tap=(from,ch,net)=>`<path d="M${from.x},${from.y} H${ch} V${SPI_Y[net]}" fill="none" stroke="${COL.spi}" stroke-width="2.2" stroke-linejoin="round"/>`;
+  W.push(tap(dP("SCK"),  890, "SCK"));  W.push(tap(dP("MOSI"), 910, "MOSI"));  W.push(tap(dP("MISO"), 930, "MISO"));
+  W.push(tap(tP("SCK"), 1100, "SCK"));  W.push(tap(tP("MOSI"),1080, "MOSI"));  W.push(tap(tP("MISO"),1060, "MISO"));
+  W.push(tap(sP("SCK"),  350, "SCK"));  W.push(tap(sP("MOSI"), 362, "MOSI"));  W.push(tap(sP("MISO"), 374, "MISO"));
+  { const a=boardPin("9"), b=boardPin("10"), c=boardPin("34");
+    W.push(`<path d="M${a.x},${a.y} H770 V${SPI_Y.SCK}" fill="none" stroke="${COL.spi}" stroke-width="2.2"/>`);
+    W.push(`<path d="M${b.x},${b.y} H785 V${SPI_Y.MOSI}" fill="none" stroke="${COL.spi}" stroke-width="2.2"/>`);
+    W.push(`<path d="M${c.x},${c.y} V${SPI_Y.MISO}" fill="none" stroke="${COL.spi}" stroke-width="2.2"/>`); }
+  h+=W.join("");
+
+  /* etiquetas dos fios principais */
+  h+=`<g font-family="ui-monospace" font-size="10">
+      <text x="815" y="272" fill="${COL.gpio}">TFT_CS=13</text>
+      <text x="835" y="298" fill="${COL.gpio}">DC=11</text>
+      <text x="855" y="324" fill="${COL.gpio}">RST=12</text>
+      <text x="875" y="350" fill="${COL.gpio}">BL=8</text>
+      <text x="900" y="592" fill="${COL.gpio}">TP_CS=36</text>
+      <text x="880" y="618" fill="${COL.gpio}">TP_IRQ=35</text>
+      <text x="390" y="600" fill="${COL.gpio}">SD_CS=39</text>
+      <text x="418" y="640" fill="${COL.gpio}">IR_TX=3</text>
+      <text x="424" y="668" fill="${COL.gpio}">IR_RX=2</text>
+      <text x="430" y="790" fill="${COL.gpio}">SPK=5</text>
+      <text x="402" y="482" fill="${COL.i2c}">SDA=38</text>
+      <text x="410" y="512" fill="${COL.i2c}">SCL=37</text>
+      <text x="600" y="84" fill="${COL.v3}">BAT → pad BAT</text>
+    </g>`;
+  /* nota do bug do SD */
+  h+=`<g><rect x="960" y="980" width="410" height="86" rx="9" fill="#ffb30010" stroke="#ffb30055"/>
+      <text x="976" y="1002" fill="#ffb300" font-size="12" font-family="ui-monospace" font-weight="700">⚠ SPI COMPARTILHADO (bug do SD)</text>
+      <text x="976" y="1022" fill="#c9d4e2" font-size="11" font-family="ui-monospace">TFT, touch e SD usam SCK=9 · MOSI=10 · MISO=34.</text>
+      <text x="976" y="1040" fill="#c9d4e2" font-size="11" font-family="ui-monospace">CS separado (13 / 36 / 39) — o SD fica HIGH no repouso.</text>
+      <text x="976" y="1058" fill="#c9d4e2" font-size="11" font-family="ui-monospace">GPIO 34–39 são pads traseiros da placa Super Mini.</text></g>`;
+  h+=`<text x="960" y="1092" fill="#6b7684" font-size="10" font-family="ui-monospace">Arte da placa: espboards.dev (CC BY-NC 4.0)</text>`;
+
+  svg.innerHTML=h;
+  svg.querySelectorAll(".mod").forEach(g=>g.addEventListener("click",()=>{
+    svg.querySelectorAll(".modbg").forEach(r=>{r.setAttribute("stroke","#00000066");r.setAttribute("stroke-width","2");});
+    const bg=g.querySelector(".modbg"); bg.setAttribute("stroke","#ff7a00"); bg.setAttribute("stroke-width","3");
+    selectTab(g.dataset.mod);
+  }));
+}
+
+/* =====================================================================
+   TELA 128x160
+   ===================================================================== */
+let lcd=null;
+const C={bg:"#000",card:"#161a22",acc:"#ff7a00",txt:"#f4f5f7",dim:"#8b90a0",ok:"#3ad07f",err:"#ff5c5c",
+         blu:"#4fc3f7",lime:"#ccff00",green:"#00e676",rosy:"#ff3b5c"};
+const ACC_LIST=["#2fa8ff","#3ad07f","#ff7a00","#ffca28","#b88aff","#7c4dff","#ff6fa5","#8bc34a"];
+const acc=()=>ACC_LIST[S.acc%8];
+
+function ringSvg(cx,cy,r,w,val,range,color,knob=true){
+  const Cc=2*Math.PI*r, frac=Math.max(0,Math.min(1,val/(range||1))), c=r+w/2;
+  const ang=(-90+frac*360)*Math.PI/180;
+  const kx=cx+r*Math.cos(ang), ky=cy+r*Math.sin(ang);
+  return `<svg style="left:${cx-c}px;top:${cy-c}px" width="${c*2}" height="${c*2}">
+    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="#1a1d24" stroke-width="${w}"/>
+    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${color}" stroke-width="${w}"
+      stroke-dasharray="${(frac*Cc).toFixed(2)} ${Cc.toFixed(2)}" transform="rotate(-90 ${c} ${c})"/>
+    ${knob?`<circle cx="${kx.toFixed(1)}" cy="${ky.toFixed(1)}" r="${(w/2+2).toFixed(1)}" fill="${color}"/>`:""}</svg>`;
+}
+function batIcon(x,y,pct){
+  let s=`<svg style="left:${x}px;top:${y}px" width="9" height="9">`;
+  s+=`<rect x="1" y="0" width="7" height="9" fill="none" stroke="#00ff66" stroke-width="1"/>`;
+  s+=`<rect x="8" y="2" width="1" height="5" fill="#00ff66"/>`;
+  const fw=Math.floor(5*pct/100), col=pct<20?C.err:C.ok;
+  for(let i=0;i<5;i++) for(let j=0;j<6;j++) if(i<fw) s+=`<rect x="${2+i}" y="${1+j}" width="1" height="1" fill="${col}"/>`;
+  return s+"</svg>";
+}
+function statusBar(){
+  const t=S.t.toTimeString().slice(0,5);
+  const btC = S.ble ? C.blu : "#39414f";
+  const wfC = S.wifi ? C.ok : "#39414f";
+  let s=`<div class="st" style="left:3px;top:1px;font-size:12px">${t}</div>`;
+  s+=`<svg style="position:absolute;right:20px;top:1px" width="10" height="12" viewBox="0 0 10 12">`+
+     `<path d="M5 1 L9 4.6 L1.4 10 M5 1 L9 8 L1.4 2.6" fill="none" stroke="${btC}" stroke-width="1.3" stroke-linejoin="round"/></svg>`;
+  s+=`<svg style="position:absolute;right:4px;top:2px" width="10" height="10" viewBox="0 0 10 10">`+
+     `<path d="M0.6 3.4 A6.2 6.2 0 0 1 9.4 3.4" fill="none" stroke="${wfC}" stroke-width="1.3" stroke-linecap="round"/>`+
+     `<path d="M2.3 5.6 A3.8 3.8 0 0 1 7.7 5.6" fill="none" stroke="${wfC}" stroke-width="1.3" stroke-linecap="round"/>`+
+     `<circle cx="5" cy="8.4" r="1.1" fill="${wfC}"/></svg>`;
+  s+=`<div class="st" style="right:16px;top:1px;font-size:12px;text-align:right">${S.batt}%</div>`;
+  return s;
+}
+function appHeader(t){
+  return `<div class="backbtn" data-act="home" style="left:2px;top:16px;width:28px;height:26px">‹</div>
+          <div class="title" style="left:36px;top:20px;font-size:13px;font-weight:600">${t}</div>`+statusBar();
+}
+function faceRedmi(){
+  const t=S.t, hh=String(t.getHours()).padStart(2,"0"), mm=String(t.getMinutes()).padStart(2,"0");
+  // layout extraido do print "padraoface.png" (127x160):
+  //   "12" ink x30..73 y38..71 | "59" ink x60..104 y88..121 | aneis x9..54 y85..132
+  let s=`<div class="abs" style="left:30px;top:29px;font-size:48px;line-height:52px;font-weight:500;color:${C.txt}">${hh}</div>`;
+  s+=`<div class="abs" style="left:58px;top:79px;font-size:48px;line-height:52px;font-weight:500;color:${C.txt}">${mm}</div>`;
+  s+=`<div class="abs" style="left:9px;top:85px;width:46px;height:48px;image-rendering:pixelated;background:url(assets/face_padrao.png) -9px -85px no-repeat"></div>`;
+  // topo-direito: diamante + "%" verde + pilula
+  s+=`<div class="abs" style="left:76px;top:4px;width:11px;height:11px;image-rendering:pixelated;background:url(assets/face_padrao.png) -76px -4px no-repeat"></div>`;
+  s+=`<div class="abs" style="left:82px;top:2px;width:31px;text-align:right;font-size:12px;line-height:15px;color:${S.batt<20?"#ff3b30":"#22b14c"}">${S.batt}%</div>`;
+  s+=`<div class="abs" style="left:116px;top:4px;width:7px;height:11px;border-radius:2px;background:${S.batt<20?"#ff3b30":"#22b14c"};border:1px solid #e8e8e8"></div>`;
+  if(S.ringShow) s+=`<div class="abs" style="left:0;top:84px;font-size:11px;color:${C.txt}">${S.ringShow}</div>`;
+  return s;
+}
+/* icone do tempo 12x12: sol / nuvem / chuva */
+function wxIcon(kind){
+  if(kind===0) return `<svg style="left:30px;top:1px" width="12" height="12"><circle cx="5" cy="5" r="3" fill="#ffd54a"/><circle cx="5" cy="5" r="2" fill="#ffe082"/>
+    <g stroke="#ffd54a" stroke-width="1"><line x1="5" y1="1" x2="5" y2="2"/><line x1="5" y1="8" x2="5" y2="9"/><line x1="1" y1="5" x2="2" y2="5"/><line x1="8" y1="5" x2="9" y2="5"/></g></svg>`;
+  const rain = kind===2 ? `<g fill="#4fc3f7"><rect x="3" y="10" width="1" height="1"/><rect x="4" y="11" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/><rect x="7" y="11" width="1" height="1"/><rect x="9" y="10" width="1" height="1"/></g>` : "";
+  return `<svg style="left:30px;top:1px" width="12" height="12"><circle cx="4" cy="6" r="2" fill="#b0bec5"/><circle cx="7" cy="5" r="3" fill="#b0bec5"/>
+    <rect x="2" y="6" width="8" height="3" fill="#b0bec5"/>${rain}</svg>`;
+}
+function faceDigital(){
+  const t=S.t, hh=String(t.getHours()).padStart(2,"0"), mm=String(t.getMinutes()).padStart(2,"0");
+  let s=`<div class="abs" style="left:0;top:28px;width:128px;text-align:center;font-size:32px;line-height:36px;font-weight:700">${hh}:${mm}</div>`;
+  s+=`<div class="abs" style="left:0;top:72px;width:128px;text-align:center;font-size:14px">${t.toDateString().slice(0,3)} ${t.getDate()}/${t.getMonth()+1}</div>`;
+  s+=`<div class="abs" style="left:0;top:98px;width:128px;text-align:center;font-size:14px;color:${C.dim}">passos ${S.steps}</div>`;
+  s+=`<div class="abs" style="left:0;top:118px;width:128px;text-align:center;font-size:12px;color:${C.dim}">23° nublado</div>`;
+  s+=ringSvg(110,58,12,4,S.steps,10000,C.lime);
+  return statusBar()+s;
+}
+function faceAnalog(){
+  const t=S.t, cx=64, cy=84;
+  const hA=((t.getHours()%12)+t.getMinutes()/60)/12*360, mA=(t.getMinutes()+t.getSeconds()/60)/60*360, sA=t.getSeconds()/60*360;
+  const hand=(a,l,c,w)=>{const q=(a-90)*Math.PI/180;
+    return `<line x1="${cx}" y1="${cy}" x2="${(cx+l*Math.cos(q)).toFixed(1)}" y2="${(cy+l*Math.sin(q)).toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;};
+  let s=`<div class="abs" style="left:0;top:16px;width:128px;text-align:center;font-size:11px;color:${C.dim}">${t.toDateString().slice(0,3)} ${t.getDate()}/${t.getMonth()+1}</div>`;
+  s+=`<svg style="left:16px;top:36px" width="96" height="96">
+    <circle cx="48" cy="48" r="44" fill="none" stroke="#c9ced9" stroke-width="2"/>
+    ${hand(hA,24,C.txt,4)}${hand(mA,32,C.txt,2)}${hand(sA,30,C.err,1)}
+    <circle cx="48" cy="48" r="3" fill="#ff5c5c"/></svg>`;
+  s+=ringSvg(64,84,46.5,3,S.steps,10000,C.lime,false);
+  s+=`<div class="abs" style="left:0;top:132px;width:128px;text-align:center;font-size:20px">${t.toTimeString().slice(0,5)}</div>`;
+  return statusBar()+s;
+}
+function faceHome(){
+  const t=S.t, hh=String(t.getHours()).padStart(2,"0"), mm=String(t.getMinutes()).padStart(2,"0");
+  // arte real do print (apps.png, y=18..159) + header dinamico + 9 areas de toque
+  let s=`<div class="abs" style="left:0;top:18px;width:128px;height:142px;overflow:hidden">
+      <img src="assets/apps.png" style="left:0;top:-18px;width:127px;height:160px;image-rendering:pixelated"></div>`;
+  s+=`<div class="abs" style="left:5px;top:0px;font-size:14px;line-height:20px;color:#fff">${hh}:${mm}</div>`;
+  s+=`<div class="abs" style="left:74px;top:5px;width:13px;height:13px;image-rendering:pixelated;background:url(assets/apps.png) -74px -5px no-repeat"></div>`;
+  s+=`<div class="abs" style="left:85px;top:2px;width:32px;text-align:right;font-size:12px;line-height:15px;color:${S.batt<20?"#ff3b30":"#fff"}">${S.batt}%</div>`;
+  s+=`<div class="abs" style="left:121px;top:6px;width:6px;height:12px;border-radius:2px;background:${S.batt<20?"#ff3b30":"#22b14c"}"></div>`;
+  const HITS=[[9,0,31],[2,41,30],[3,85,33],[5,1,74],[6,42,76],[4,85,77],[7,1,118],[1,43,118],[0,85,119]];
+  HITS.forEach(([id,x,y])=>{ s+=`<div class="abs" data-app="${id}" style="left:${x}px;top:${y}px;width:38px;height:38px;cursor:pointer"></div>`; });
+  return s;
+}
+function scrollBox(top,left,h,inner){return `<div class="abs" style="left:${left}px;top:${top}px;width:118px;height:${h}px;overflow-y:auto;overflow-x:hidden">${inner}</div>`;}
+function scrConfig(){
+  const rows=[["◔","Wi-Fi","wifi"],["C","Clima","clima"],["◑","Data e hora","data"],["▣","Tela","pers"],
+              ["⚙","Ajustes","ajustes"],["M","Matematica","mat"],["⚡","Saude","saude"],
+              ["T","Toque (teste)","toque"],["i","Info","info"],["!","Reset fabrica","reset"]];
+  let inner=rows.map((r,i)=>`<div class="rowitem" data-act="cfg:${r[2]}" style="left:0;top:${i*20}px;width:118px;height:18px;font-size:12px">
+      <span style="position:absolute;left:3px;color:${acc()}">${r[0]}</span>
+      <span style="position:absolute;left:21px">${r[1]}</span>
+      <span style="position:absolute;right:4px;color:${C.dim}">›</span></div>`).join("");
+  return appHeader("CONFIG")+scrollBox(51,5,102,inner);
+}
+function scrSaude(){
+  let s=appHeader("SAUDE");
+  s+=ringSvg(64,78,39,6,S.steps,10000,C.lime,false);
+  s+=ringSvg(64,78,27,6,Math.min(700,Math.round(S.steps*0.07)),700,C.green,false);
+  s+=ringSvg(64,78,16,6,Math.min(400,Math.round(S.steps*0.04)),400,C.rosy,false);
+  s+=`<div class="abs" style="left:0;top:72px;width:128px;text-align:center;font-size:14px">${S.steps}</div>`;
+  s+=`<div class="abs" style="left:6px;top:128px;font-size:11px;color:${C.green}">${(S.steps*0.0007).toFixed(2)}km</div>`;
+  s+=`<div class="abs" style="left:50px;top:128px;font-size:11px;color:${C.lime}">${S.steps}</div>`;
+  s+=`<div class="abs" style="left:92px;top:128px;font-size:11px;color:${C.rosy}">${Math.round(S.steps*0.04)}cal</div>`;
+  s+=`<div class="abs" data-act="zero" style="left:39px;top:144px;width:50px;height:16px;line-height:16px;text-align:center;font-size:11px;background:#3b1b1b;border-radius:8px">Zerar</div>`;
+  return s;
+}
+function scrPers(){
+  let s=appHeader("PERSONALIZAR");
+  s+=`<div class="st" style="left:5px;top:51px;font-size:11px">COR DE DESTAQUE</div>`;
+  for(let i=0;i<8;i++) s+=`<div class="abs" data-act="acc:${i}" style="left:${5+i*14}px;top:64px;width:16px;height:16px;border-radius:50%;background:${ACC_LIST[i]};border:${i===S.acc?"2px solid #f4f5f7":"none"}"></div>`;
+  s+=`<div class="st" style="left:5px;top:82px;font-size:11px">ESTILO DO RELOGIO</div>`;
+  ["Digital","Analog","Redmi"].forEach((n,i)=>{const on=S.style===i;
+    s+=`<div class="abs" data-act="style:${i}" style="left:${5+i*39}px;top:95px;width:37px;height:18px;line-height:18px;text-align:center;font-size:11px;border-radius:9px;background:${on?acc():"#161a22"};color:${on?"#0b0d12":C.txt}">${n}</div>`;});
+  s+=`<div class="rowitem" style="left:5px;top:115px;width:118px;height:18px;font-size:12px">
+      <span style="position:absolute;left:6px">Tema espacial</span>
+      <span style="position:absolute;right:4px;width:26px;height:14px;border-radius:7px;background:#3ad07f"></span></div>`;
+  s+=`<div class="abs" data-act="wp" style="left:5px;top:135px;width:57px;height:18px;line-height:18px;text-align:center;font-size:11px;background:#10304a;border-radius:9px">Do SD</div>`;
+  s+=`<div class="abs" data-act="wp2" style="left:66px;top:135px;width:57px;height:18px;line-height:18px;text-align:center;font-size:11px;background:#3b1b1b;border-radius:9px">Remover WP</div>`;
+  return s;
+}
+function scrLevel(){
+  const dx=-MOD.mpu.x*30/45, dy=-MOD.mpu.y*30/45, lev=Math.abs(dx)<3&&Math.abs(dy)<3;
+  let s=appHeader("NIVEL");
+  s+=`<div class="abs" style="left:26px;top:52px;width:76px;height:76px;border-radius:50%;background:#161a22;border:2px solid ${acc()}">
+      <div class="abs" style="left:31px;top:37px;width:40px;height:1px;background:${C.dim}"></div>
+      <div class="abs" style="left:37px;top:31px;width:1px;height:40px;background:${C.dim}"></div>
+      <div class="abs" style="left:${31+dx}px;top:${31+dy}px;width:14px;height:14px;border-radius:50%;background:${lev?C.ok:acc()}"></div></div>`;
+  s+=`<div class="abs" style="left:0;top:134px;width:128px;text-align:center;font-size:13px;color:${lev?C.ok:C.dim}">
+      ${MOD.mpu.ok?"pitch "+Math.round(-dx*1.5)+"  roll "+Math.round(-dy*1.5):"MPU ausente!"}</div>`;
+  return s;
+}
+function fileIco(kind){
+  if(kind===0) return `<svg style="left:2px;top:1px" width="12" height="12"><rect x="1" y="3" width="4" height="2" fill="#f2c230"/><rect x="1" y="5" width="10" height="7" fill="#e0ae12"/><rect x="2" y="6" width="8" height="5" fill="#f7d354"/></svg>`;
+  if(kind===1) return `<svg style="left:2px;top:1px" width="12" height="12"><rect x="1" y="2" width="10" height="9" fill="#3ad07f"/><rect x="2" y="3" width="8" height="7" fill="#0f2a1c"/><rect x="3" y="7" width="2" height="2" fill="#3ad07f"/><rect x="6" y="5" width="2" height="2" fill="#3ad07f"/><rect x="2" y="9" width="8" height="1" fill="#3ad07f"/></svg>`;
+  if(kind===2) return `<svg style="left:2px;top:1px" width="12" height="12"><rect x="6" y="1" width="2" height="7" fill="#b388ff"/><rect x="4" y="7" width="2" height="2" fill="#b388ff"/><rect x="8" y="7" width="2" height="2" fill="#b388ff"/><rect x="3" y="9" width="6" height="2" fill="#b388ff"/></svg>`;
+  if(kind===3) return `<svg style="left:2px;top:1px" width="12" height="12"><rect x="1" y="2" width="10" height="9" fill="#5a8dee"/><rect x="2" y="3" width="8" height="7" fill="#0f1a2c"/><rect x="5" y="5" width="2" height="3" fill="#5a8dee"/></svg>`;
+  return `<svg style="left:2px;top:1px" width="12" height="12"><rect x="2" y="1" width="8" height="10" fill="#8b90a0"/><rect x="3" y="2" width="6" height="8" fill="#1b2028"/><rect x="4" y="4" width="4" height="1" fill="#8b90a0"/><rect x="4" y="6" width="4" height="1" fill="#8b90a0"/><rect x="4" y="8" width="3" height="1" fill="#8b90a0"/></svg>`;
+}
+function fileKind(n){
+  const lo=n.toLowerCase();
+  if(lo.endsWith(".jpg")||lo.endsWith(".jpeg")||lo.endsWith(".bmp")||lo.endsWith(".png")) return 1;
+  if(lo.endsWith(".wav")||lo.endsWith(".mp3")) return 2;
+  if(lo.endsWith(".mp4")||lo.endsWith(".mov")||lo.endsWith(".mkv")||lo.endsWith(".avi")||lo.endsWith(".webm")) return 3;
+  return 4;
+}
+function scrArquivos(){
+  let s=appHeader("ARQUIVOS");
+  /* barra de ferramentas (Explorer) */
+  const tb=[{i:"⟳",a:"upd"},{i:"↑",a:"up"},{i:"▤",a:"fotos"},{i:"⇧",a:"send"},{i:"i",a:"info"},{i:"▣",a:"upd"}];
+  tb.forEach((t,i)=>{ s+=`<div class="abs" data-act="${t.a}" style="left:${2+i*21}px;top:46px;width:19px;height:18px;line-height:18px;text-align:center;font-size:12px;background:#1c202b;border-radius:5px">${t.i}</div>`; });
+  /* barra de endereco */
+  s+=`<div class="abs" style="left:2px;top:66px;width:124px;height:15px;line-height:15px;padding-left:4px;font-size:12px;background:#12151c;border:1px solid #2a3444;border-radius:4px">SD CARD</div>`;
+  /* cabecalho das colunas */
+  s+=`<div class="st" style="left:4px;top:83px;font-size:12px">Nome</div>`;
+  s+=`<div class="st" style="left:94px;top:83px;width:30px;text-align:right;font-size:12px">Tamanho</div>`;
+  /* lista */
+  const files=MOD.sd.present?MOD.sd.list.split(",").filter(x=>x.trim()):[];
+  s+=`<div class="abs" style="left:2px;top:96px;width:124px;height:44px;overflow-y:auto;overflow-x:hidden">`+
+    files.map((f,i)=>`<div class="rowitem" data-act="file:${f}" style="left:0;top:${i*15}px;width:122px;height:14px;font-size:12px">${fileIco(fileKind(f))}<span style="position:absolute;left:16px;top:0">${f}</span>
+      <span style="position:absolute;right:4px;top:0;color:#8b90a0;font-size:12px">${f.endsWith(".wav")?"1.2M":f.endsWith(".jpg")?"84K":"12K"}</span></div>`).join("")+"</div>";
+  /* status */
+  s+=`<div class="st" style="left:4px;top:142px;font-size:12px">${MOD.sd.present?files.length+" itens  ·  SD CARD":"SD ausente ou vazio"}</div>`;
+  return s;
+}
+function scrJogos(){
+  const g=["PONG","INVASORES","FLAPPY","DINO","TETRIS","DAMA","XADREZ","MARIO","SONIC","DOOM","DADO","MOEDA","SNAKE"];
+  let inner=g.map((n,i)=>{const col=i%2,row=Math.floor(i/2);
+    return `<div class="card" data-act="game:${n}" style="left:${4+col*62}px;top:${6+row*53}px;width:57px;height:48px;border:1px solid #2a3444">
+      <div class="abs" style="left:0;top:8px;width:57px;text-align:center;font-size:13px;color:${acc()}">◆</div>
+      <div class="abs" style="left:1px;top:28px;width:55px;text-align:center;font-size:10px">${n}</div></div>`;}).join("");
+  return appHeader("JOGOS")+scrollBox(44,0,116,inner);
+}
+function scrClima(){
+  let s=appHeader("CLIMA");
+  s+=`<div class="abs" style="left:0;top:42px;width:128px;text-align:center;font-size:28px;font-weight:700;color:${acc()}">23°</div>`;
+  s+=`<div class="abs" style="left:5px;top:76px;width:118px;text-align:center;font-size:13px">nublado</div>`;
+  s+=`<div class="abs" style="left:5px;top:92px;width:118px;text-align:center;font-size:11px;color:${C.dim}">vento 8km/h 62%  sen.21°</div>`;
+  s+=`<div class="st" style="left:2px;top:112px;font-size:11px">lat:</div>`;
+  s+=`<div class="abs" style="left:18px;top:108px;width:44px;height:20px;line-height:20px;font-size:11px;background:#12151c;border-radius:5px;padding-left:3px">-20.4428</div>`;
+  s+=`<div class="st" style="left:65px;top:112px;font-size:11px">lon:</div>`;
+  s+=`<div class="abs" style="left:84px;top:108px;width:42px;height:20px;line-height:20px;font-size:11px;background:#12151c;border-radius:5px;padding-left:3px">-54.6464</div>`;
+  s+=`<div class="abs" data-act="wx" style="left:5px;top:133px;width:118px;height:20px;line-height:20px;text-align:center;font-size:12px;background:#10304a;border-radius:9px">Atualizar</div>`;
+  return s;
+}
+function scrCrono(){
+  let s=appHeader("CRONO");
+  s+=`<div class="abs" style="left:0;top:44px;width:128px;text-align:center;font-size:20px">00:00.0</div>`;
+  s+=`<div class="abs" data-act="cron" style="left:0;top:70px;width:63px;height:18px;line-height:18px;text-align:center;font-size:12px;background:#10304a;border-radius:9px">Crono</div>`;
+  s+=`<div class="abs" data-act="cron" style="left:65px;top:70px;width:63px;height:18px;line-height:18px;text-align:center;font-size:12px;background:#161a22;border-radius:9px">Timer</div>`;
+  s+=`<div class="abs" data-act="cron" style="left:0px;top:90px;width:60px;height:22px;line-height:22px;text-align:center;font-size:12px;background:#10304a;border-radius:9px">Iniciar</div>`;
+  s+=`<div class="abs" data-act="cron" style="left:68px;top:90px;width:60px;height:22px;line-height:22px;text-align:center;font-size:12px;background:#3b1b1b;border-radius:9px">Zerar</div>`;
+  s+=`<div class="abs" data-act="cron" style="left:0px;top:114px;width:60px;height:18px;line-height:18px;text-align:center;font-size:12px;background:#161a22;border-radius:9px">Volta</div>`;
+  s+=`<div class="st" style="left:0;top:136px;width:128px;text-align:center;font-size:11px">sem voltas</div>`;
+  return s;
+}
+function scrToolbox(){
+  const items=["TVs","AR","TV-Gone","Midia BT","Controle IR","Lanterna","Beep","BLE Scan","Ping","Crono","Notas","Dado","BadBLE","Espelho","Personalizar"];
+  let inner=items.map((n,i)=>`<div class="rowitem" data-act="tb:${n}" style="left:0;top:${i*20}px;width:118px;height:18px;font-size:12px">
+      <span style="position:absolute;left:3px;color:${acc()}">•</span>
+      <span style="position:absolute;left:21px">${n}</span>
+      <span style="position:absolute;right:4px;color:${C.dim}">›</span></div>`).join("");
+  return appHeader("TOOLBOX")+scrollBox(51,5,102,inner);
+}
+function scrWifi(){
+  let s=appHeader("WI-FI");
+  s+=`<div class="st" style="left:5px;top:44px;font-size:12px">${MOD.net.wifi?("On: "+(MOD.net.ssid||"rede")+" 192.168.0.10"):"Desconectado"}</div>`;
+  ["Scan","+Rede","NTP"].forEach((b,i)=>{s+=`<div class="abs" data-act="wifi" style="left:${4+i*40}px;top:62px;width:38px;height:20px;line-height:20px;text-align:center;font-size:11px;background:#161a22;border-radius:9px">${b}</div>`;});
+  const nets=MOD.net.wifi?["MinhaRede","Visitantes","Xiaomi_AE98"]:["MinhaRede","Visitantes","Xiaomi_AE98","Rede_Vizinha"];
+  let inner=nets.map((n,i)=>`<div class="rowitem" data-act="wifi" style="left:0;top:${i*20}px;width:118px;height:18px;font-size:12px">
+      <span style="position:absolute;left:4px;color:${C.ok}">◔</span>
+      <span style="position:absolute;left:22px">${n}</span>
+      <span style="position:absolute;right:4px;color:${C.dim}">${MOD.net.wifi&&i===0?"✓":""}</span></div>`).join("");
+  return s+scrollBox(84,5,74,inner);
+}
+function scrData(){
+  const t=S.t, p=n=>String(n).padStart(2,"0");
+  let s=appHeader("DATA E HORA");
+  s+=`<div class="st" style="left:7px;top:51px;font-size:11px">HORA</div>`;
+  [[t.getHours(),"8"],[t.getMinutes(),"48"],[t.getSeconds(),"88"]].forEach(v=>{s+=`<div class="abs" data-act="dh" style="left:${v[1]}px;top:65px;font-size:20px">${p(v[0])}</div>`;});
+  s+=`<div class="abs" style="left:34px;top:65px;font-size:20px;color:#676c7a">:</div><div class="abs" style="left:74px;top:65px;font-size:20px;color:#676c7a">:</div>`;
+  s+=`<div class="st" style="left:7px;top:97px;font-size:11px">DATA</div>`;
+  [[t.getDate(),"8"],[t.getMonth()+1,"48"],[t.getFullYear()%100,"88"]].forEach(v=>{s+=`<div class="abs" data-act="dh" style="left:${v[1]}px;top:111px;font-size:20px">${p(v[0])}</div>`;});
+  s+=`<div class="abs" style="left:34px;top:111px;font-size:20px;color:#676c7a">/</div><div class="abs" style="left:74px;top:111px;font-size:20px;color:#676c7a">/</div>`;
+  s+=`<div class="abs" data-act="dh" style="left:7px;top:137px;width:58px;height:22px;line-height:22px;text-align:center;font-size:12px;background:#1a3b25;border-radius:9px">Aplicar</div>`;
+  s+=`<div class="abs" data-act="dh" style="left:71px;top:137px;width:58px;height:22px;line-height:22px;text-align:center;font-size:12px;background:#1c202b;border-radius:9px">NTP</div>`;
+  return s;
+}
+function scrAjustes(){
+  let s=appHeader("AJUSTES");
+  s+=`<div class="st" style="left:5px;top:51px;font-size:11px">Bloqueio automatico</div>`;
+  s+=`<div class="abs" style="left:5px;top:63px;width:118px;height:8px;border-radius:4px;background:#161a22">
+      <div style="position:absolute;left:0;top:0;width:32px;height:8px;border-radius:4px;background:${acc()}"></div>
+      <div style="position:absolute;left:26px;top:-4px;width:14px;height:14px;border-radius:50%;background:#f4f5f7"></div></div>`;
+  [["WiFi auto",1],["Bip ao tocar",1],["2 toques p/ acordar",1]].forEach((r,i)=>{
+    s+=`<div class="rowitem" style="left:5px;top:${83+i*22}px;width:118px;height:18px;font-size:12px">
+      <span style="position:absolute;left:6px">${r[0]}</span>
+      <span style="position:absolute;right:4px;width:26px;height:14px;border-radius:7px;background:${r[1]?C.ok:"#2a3040"}"></span></div>`;});
+  return s;
+}
+function scrToque(){
+  let s=appHeader("TOQUE");
+  s+=`<div class="abs" style="left:0;top:132px;width:128px;text-align:center;font-size:13px;color:${C.ok}">toque na tela</div>`;
+  if(MOD.touch.show) s+=`<div class="abs" style="left:50px;top:60px;width:20px;height:20px;border-radius:50%;background:${acc()}"></div>`;
+  return s;
+}
+function scrInfo(){
+  const lines=["Versao: v2.0 LVGL","MAC: 7C:9E:BD:11:22:33","IP: "+(MOD.net.wifi?"192.168.0.10":"0.0.0.0"),
+    "Heap: "+(S.heap/1024).toFixed(0)+" kB","PSRAM: 1800 kB livres","Ligado: 00h12m",
+    "SPIFFS: 12/1024 kB","Bateria: 4.02V "+S.batt+"%","Face: "+["Digital","Analog","Redmi"][S.style]];
+  let inner=lines.map((l,i)=>`<div class="abs" style="left:0;top:${i*16}px;width:118px;font-size:12px;color:${i?"#8b90a0":"#f4f5f7"}">${l}</div>`).join("");
+  return appHeader("INFO")+scrollBox(51,5,102,inner);
+}
+function scrReset(){
+  let s=appHeader("CONFIRMAR");
+  s+=`<div class="abs" style="left:7px;top:54px;width:114px;font-size:12px;color:#f8a0a0">Apaga config, Wi-Fi e calibracao, e reinicia o relogio. Confirmar?</div>`;
+  s+=`<div class="abs" data-act="reset" style="left:5px;top:131px;width:56px;height:22px;line-height:22px;text-align:center;font-size:12px;background:#161a22;border-radius:9px">CANCELAR</div>`;
+  s+=`<div class="abs" data-act="reset" style="left:65px;top:131px;width:56px;height:22px;line-height:22px;text-align:center;font-size:12px;background:#5a1414;border-radius:9px">RESET</div>`;
+  return s;
+}
+function screenHtml(){
+  switch(S.screen){
+    case "lock": return S.style===2?faceRedmi():S.style===1?faceAnalog():faceDigital();
+    case "home": return faceHome();
+    case "config": return scrConfig(); case "saude": return scrSaude(); case "pers": return scrPers();
+    case "level": return scrLevel(); case "arquivos": return scrArquivos(); case "jogos": return scrJogos();
+    case "clima": return scrClima(); case "crono": return scrCrono(); case "toolbox": return scrToolbox();
+    case "wifi": return scrWifi(); case "data": return scrData(); case "ajustes": return scrAjustes();
+    case "toque": return scrToque(); case "info": return scrInfo(); case "reset": return scrReset();
+    default: return faceHome();
+  }
+}
+function render(){
+  if(!lcd) return;
+  lcd.innerHTML=`<div class="scr">${screenHtml()}</div>`;
+  lcd.style.filter="brightness("+(0.25+S.bright/100*0.75).toFixed(2)+")"+(S.rot?" rotate(180deg)":"");
+  document.getElementById("pillFace").textContent=["Digital","Analog","Redmi"][S.style];
+  document.getElementById("pillTime").textContent=S.t.toTimeString().slice(0,5);
+  const kv=document.getElementById("kv"); if(kv) kv.innerHTML=kvHtml();
+}
+function kvHtml(){
+  return `<div class="kv"><span>Tela</span><b>${({lock:"bloqueio",home:"home",config:"config",saude:"saude",pers:"personalizar",
+    level:"nivel",arquivos:"arquivos",jogos:"jogos",clima:"clima",crono:"crono",toolbox:"toolbox",wifi:"wifi",
+    data:"data/hora",ajustes:"ajustes",toque:"toque",info:"info",reset:"reset"})[S.screen]}</b></div>
+    <div class="kv"><span>Face</span><b>${["Digital","Analog","Redmi"][S.style]}</b></div>
+    <div class="kv"><span>Passos</span><b>${S.steps}</b></div>
+    <div class="kv"><span>Distância</span><b>${(S.steps*0.0007).toFixed(2)} km</b></div>
+    <div class="kv"><span>Calorias</span><b>${Math.round(S.steps*0.04)} kcal</b></div>
+    <div class="kv"><span>Bateria</span><b>${S.batt}%</b></div>
+    <div class="kv"><span>Wi-Fi</span><b>${MOD.net.wifi?(MOD.net.ssid||"on"):"off"}</b></div>
+    <div class="kv"><span>BLE</span><b>${MOD.net.ble?"on":"off"}</b></div>
+    <div class="kv"><span>SD</span><b>${MOD.sd.present?"presente":"ausente"}</b></div>
+    <div class="kv"><span>Heap</span><b>${(S.heap/1024).toFixed(0)} kB</b></div>`;
+}
+
+/* ---------------- toque ---------------- */
+let press=null, ringId=-1;
+function lcdPos(e){ const r=lcd.getBoundingClientRect();
+  return { x:(e.clientX-r.left)+MOD.touch.dx, y:(e.clientY-r.top)+MOD.touch.dy }; }
+function ringHit(x,y){
+  const rings = S.screen==="saude" ? [{id:0,cx:64,cy:78,r:39,w:6}]
+    : [{id:0,cx:30,cy:129,r:24.5,w:5},{id:1,cx:30,cy:129,r:20,w:4},{id:2,cx:30,cy:129,r:15,w:4}];
+  for(const r of rings){ const d=Math.hypot(x-r.cx,y-r.cy); if(Math.abs(d-r.r)<=r.w/2+3) return r.id; }
+  return -1;
+}
+function rotateRing(id,x,y){
+  const cx=S.screen==="saude"?64:30, cy=S.screen==="saude"?78:129, rr=S.screen==="saude"?39:[24.5,20,15][id];
+  let a=Math.atan2(y-cy,x-cx)*180/Math.PI+90; while(a<0)a+=360; while(a>=360)a-=360;
+  const range=id===0?10000:(id===1?70:400);
+  const val=Math.round(range*a/360);
+  if(id===0){S.steps=Math.max(0,Math.min(10000,val));S.ringShow=S.steps+" passos";}
+  if(id===1){S.steps=Math.max(0,Math.min(10000,Math.round(val/0.007)));S.ringShow=(val/10).toFixed(1)+" km";}
+  if(id===2){S.steps=Math.max(0,Math.min(10000,Math.round(val/0.04)));S.ringShow=val+" kcal";}
+  render();
+}
+function bindLcd(){
+  lcd.addEventListener("pointerdown",e=>{
+    if(!MOD.touch.on) return;
+    const p=lcdPos(e); press=p; ringId=ringHit(p.x,p.y);
+    if(ringId>=0) rotateRing(ringId,p.x,p.y);
+    lcd.setPointerCapture(e.pointerId);
+  });
+  lcd.addEventListener("pointermove",e=>{ if(!press) return; const p=lcdPos(e); if(ringId>=0) rotateRing(ringId,p.x,p.y); });
+  lcd.addEventListener("pointerup",e=>{
+    if(!press) return; press=null;
+    if(ringId>=0){ ringId=-1; S.ringShow=null; render(); return; }
+    if(S.screen==="lock"){ S.screen="home"; render(); return; }
+    if(S.screen==="home"){
+      const el=document.elementFromPoint(e.clientX,e.clientY);
+      const chip=el&&el.closest?el.closest("[data-app]"):null;
+      if(chip) openApp(+chip.dataset.app);
+    }
+  });
+  lcd.addEventListener("click",e=>{ const el=e.target; if(el.dataset&&el.dataset.act) doAction(el.dataset.act); });
+}
+function doAction(a){
+  if(a==="home"){S.screen="home";render();return;}
+  if(a.startsWith("acc:")){S.acc=+a.slice(4);log("accent = "+ACC_LIST[S.acc],"i");render();return;}
+  if(a.startsWith("style:")){S.style=+a.slice(6);log("face = "+["Digital","Analog","Redmi"][S.style],"i");render();return;}
+  if(a.startsWith("cfg:")){S.screen=a.slice(4);render();return;}
+  if(a.startsWith("tb:")){const it=a.slice(3);
+    if(it==="Crono")S.screen="crono"; else if(it==="Personalizar")S.screen="pers"; else log("Toolbox > "+it,"i");
+    render();return;}
+  if(a.startsWith("game:")){log("abrir jogo "+a.slice(5),"g");render();return;}
+  if(a==="zero"){S.steps=0;log("contador zerado","w");render();return;}
+  if(a==="send"){log("AP WearSend ligado (192.168.4.1)","g");render();return;}
+  if(a==="upd"){log("SD lido: "+MOD.sd.list.split(",").length+" itens","g");render();return;}
+  if(a==="info"){log("SD: FAT32 - 1024/4096 MB","i");render();return;}
+  if(a==="fotos"){log("galeria de fotos aberta","i");render();return;}
+  if(a==="wx"){
+    S.wxTemp=31; S.wxDesc="Ensolarado"; S.wxKind=0;
+    log("clima Open-Meteo: 31°C Ensolarado","g"); render(); return;
+  }
+  if(a.startsWith("file:")){log("abriu "+a.slice(5),"i");render();return;}
+  if(a.startsWith("cron")){log("cronometro","i");render();return;}
+  if(a==="wifi"){log("Wi-Fi: scan 4s","i");render();return;}
+  if(a==="dh"){log("hora aplicada","g");render();return;}
+  if(a==="reset"){log("reset de fabrica: SPIFFS formatado, reiniciando","e");render();return;}
+}
+function openApp(id){
+  switch(id){
+    case 0:S.screen="config";break; case 1:S.screen="toolbox";break; case 6:S.screen="saude";break;
+    case 7:S.screen="arquivos";break; case 5:S.screen="jogos";break; case 2:S.screen="level";break;
+    case 8:S.screen="lock";break; case 10:S.screen="ajustes";break;
+    case 9:log("power off (tela escura)","w");S.screen="lock";break;
+    default:log("app aberto","i");
+  }
+  render();
+}
+
+/* ---------------- painéis ---------------- */
+const TABS=[["display","Display"],["touch","Touch"],["sd","Cartão SD"],["mpu","MPU-6050"],["ir","IR"],["spk","Speaker"],["bat","Bateria"],["net","Rede"]];
+let tab="display";
+const tabsEl=document.getElementById("tabs"), panelEl=document.getElementById("panel");
+function buildTabs(){
+  tabsEl.innerHTML=TABS.map(([id,n])=>`<button data-tab="${id}" class="${id===tab?"on":""}">${n}</button>`).join("");
+  tabsEl.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>selectTab(b.dataset.tab)));
+}
+function selectTab(id){ tab=id; buildTabs(); buildPanel(); }
+function chk(id,label,on){return `<div class="chk"><input type="checkbox" id="${id}" ${on?"checked":""}><label for="${id}" style="color:var(--dim)">${label}</label></div>`;}
+function slider(id,label,val,min,max,fmt){return `<div class="row"><label>${label}<b id="${id}_v">${fmt?fmt(val):val}</b></label><input type="range" id="${id}" min="${min}" max="${max}" value="${val}"></div>`;}
+function buildPanel(){
+  let h="";
+  if(tab==="display"){
+    h+=`<h4>Display · ST7735 1.8&quot;</h4>`;
+    h+=`<div class="row"><label>Face do relógio</label><select id="p_face" style="width:100%">
+      <option value="0" ${S.style===0?"selected":""}>Digital</option>
+      <option value="1" ${S.style===1?"selected":""}>Analógica</option>
+      <option value="2" ${S.style===2?"selected":""}>Padrão (Redmi)</option></select></div>`;
+    h+=slider("p_bri","Brilho (backlight GPIO8)",S.bright,10,100,v=>v+"%");
+    h+=chk("p_rot","Rotacionar 180° (MADCTL)",S.rot);
+    h+=`<div class="hint">A tela no esquema é o DOM real de 128×160 px (1:1) — o mesmo conteúdo do firmware.<br>
+        Face padrão: pixel a pixel do print (HH em cima, MM embaixo à direita e os 3 anéis à esquerda).</div>`;
+  }
+  if(tab==="touch"){ h+=`<h4>Touch · XPT2046</h4>`+chk("p_ton","Touch habilitado",MOD.touch.on)+
+    chk("p_tshow","Mostrar ponto do toque",MOD.touch.show)+slider("p_dx","Calibração X",MOD.touch.dx,-20,20,v=>(v>0?"+":"")+v+" px")+
+    slider("p_dy","Calibração Y",MOD.touch.dy,-20,20,v=>(v>0?"+":"")+v+" px")+
+    `<div class="hint">CS=36 · IRQ=35 (compartilha SCK/MOSI/MISO do TFT).</div>`; }
+  if(tab==="sd"){ h+=`<h4>Cartão SD (SPI compartilhado)</h4>`+chk("p_sdp","Cartão presente",MOD.sd.present)+
+    `<div class="row"><label>Arquivos (separados por vírgula)</label><input type="text" id="p_files" style="width:100%" value="${MOD.sd.list}"></div>`+
+    `<div class="hint">CS=39 · SCK/MOSI/MISO = 9/10/34 (compartilhados com TFT e touch).</div>`; }
+  if(tab==="mpu"){ h+=`<h4>MPU-6050 · I²C</h4>`+chk("p_mpuok","Módulo presente",MOD.mpu.ok)+
+    slider("p_mx","Inclinação X",MOD.mpu.x,-45,45,v=>v+"°")+slider("p_my","Inclinação Y",MOD.mpu.y,-45,45,v=>v+"°")+
+    chk("p_walk","Caminhar (conta passos)",MOD.mpu.walk)+
+    `<div class="hint">SDA=38 · SCL=37 (pads traseiros). Passos: <b>${S.steps}</b> · km ${(S.steps*0.0007).toFixed(2)} · cal ${Math.round(S.steps*0.04)}.</div>`; }
+  if(tab==="ir"){ h+=`<h4>IR · 38 kHz</h4><div class="row"><button id="p_irsend" style="width:100%">Enviar POWER (NEC 0xB4)</button></div>`+
+    chk("p_irrx","Módulo receptor conectado",MOD.ir.rx)+`<div class="hint">TX=3 (LED) · RX=2 (receptor).</div>`; }
+  if(tab==="spk"){ h+=`<h4>Speaker · PWM</h4>`+chk("p_spk","Speaker habilitado",MOD.spk.on)+
+    `<div class="row"><button id="p_beep" style="width:100%">Tocar bip (1200 Hz, 140 ms)</button></div>`+
+    `<div class="hint">SPK=5 via LEDC (duty = amplitude do WAV).</div>`; }
+  if(tab==="bat"){ h+=`<h4>Bateria · ADC1</h4>`+slider("p_bat","Carga",MOD.bat.pct,0,100,v=>v+"%")+
+    `<div class="hint">Divisor 3:1 · BAT_VLO 3.0 V · BAT_VHI 4.20 V → GPIO1 (ADC1).<br>Pads BAT+/GND na borda direita da placa.</div>`; }
+  if(tab==="net"){ h+=`<h4>Rede · Wi-Fi / BLE</h4>`+chk("p_wifi","Wi-Fi conectado",MOD.net.wifi)+
+    `<div class="row"><label>SSID</label><input type="text" id="p_ssid" style="width:100%" value="${MOD.net.ssid}" placeholder="minha-rede"></div>`+
+    chk("p_ble","BLE ativo (ícone BT azul)",MOD.net.ble)+
+    `<div class="hint">Espelho do LCD (AP WearMirror, porta 81) · upload (AP WearSend, porta 80).</div>`; }
+  h+=`<h4>Estado</h4><div id="kv">${kvHtml()}</div>`;
+  panelEl.innerHTML=h;
+  const on=(id,ev,fn)=>{const e=document.getElementById(id); if(e)e.addEventListener(ev,fn);};
+  on("p_face","change",e=>{S.style=+e.target.value;log("face = "+e.target.value,"i");render();});
+  on("p_bri","input",e=>{S.bright=+e.target.value;document.getElementById("p_bri_v").textContent=S.bright+"%";render();});
+  on("p_rot","change",e=>{S.rot=e.target.checked;log("rotação 180° "+(S.rot?"ON":"OFF"),"i");render();});
+  on("p_ton","change",e=>{MOD.touch.on=e.target.checked;log("touch "+(e.target.checked?"ON":"OFF"),"i");});
+  on("p_tshow","change",e=>{MOD.touch.show=e.target.checked;});
+  on("p_dx","input",e=>{MOD.touch.dx=+e.target.value;document.getElementById("p_dx_v").textContent=e.target.value+" px";});
+  on("p_dy","input",e=>{MOD.touch.dy=+e.target.value;document.getElementById("p_dy_v").textContent=e.target.value+" px";});
+  on("p_sdp","change",e=>{MOD.sd.present=e.target.checked;log("SD "+(e.target.checked?"montado":"ausente"),e.target.checked?"g":"e");render();});
+  on("p_files","change",e=>{MOD.sd.list=e.target.value;render();});
+  on("p_mpuok","change",e=>{MOD.mpu.ok=e.target.checked;render();});
+  on("p_mx","input",e=>{MOD.mpu.x=+e.target.value;document.getElementById("p_mx_v").textContent=e.target.value+"°";if(S.screen==="level")render();});
+  on("p_my","input",e=>{MOD.mpu.y=+e.target.value;document.getElementById("p_my_v").textContent=e.target.value+"°";if(S.screen==="level")render();});
+  on("p_walk","change",e=>{MOD.mpu.walk=e.target.checked;});
+  on("p_irrx","change",e=>{MOD.ir.rx=e.target.checked;});
+  on("p_irsend","click",()=>{log("IR TX: NEC 0xB4 (POWER) - 110 ms","w");blinkIR();});
+  on("p_spk","change",e=>{MOD.spk.on=e.target.checked;});
+  on("p_beep","click",()=>{if(MOD.spk.on)beep();log("SPK: bip 1200 Hz / 140 ms","g");});
+  on("p_bat","input",e=>{MOD.bat.pct=+e.target.value;S.batt=MOD.bat.pct;document.getElementById("p_bat_v").textContent=S.batt+"%";
+    if(S.batt<20&&S.batt>0)log("Bateria fraca "+S.batt+"% - conecte o carregador","w");render();});
+  on("p_wifi","change",e=>{MOD.net.wifi=e.target.checked;S.wifi=e.target.checked;log("Wi-Fi "+(e.target.checked?"conectado":"desligado"),e.target.checked?"g":"w");render();});
+  on("p_ssid","change",e=>{MOD.net.ssid=e.target.value;render();});
+  on("p_ble","change",e=>{MOD.net.ble=e.target.checked;S.ble=e.target.checked;log("BLE "+(e.target.checked?"ativo":"desligado"),"i");render();});
+}
+/* ---------------- efeitos ---------------- */
+let audioCtx=null;
+function beep(){ try{ audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.frequency.value=1200;o.type="square";
+  g.gain.setValueAtTime(0.08,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.14);
+  o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+0.15);}catch(e){} }
+function blinkIR(){ const svg=document.getElementById("sch"); let led=svg.querySelector("#irled");
+  if(!led){ led=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    led.setAttribute("id","irled");led.setAttribute("cx",100);led.setAttribute("cy",628);led.setAttribute("r",7);
+    led.setAttribute("fill","#ff5252");led.setAttribute("opacity","0");svg.appendChild(led); }
+  led.setAttribute("opacity","1"); setTimeout(()=>led.setAttribute("opacity","0"),220); }
+/* ---------------- loop ---------------- */
+function tick(){ S.t=new Date();
+  if(MOD.mpu.walk&&MOD.mpu.ok){S.steps++; if(S.steps%7===0)log("[mpu] passo "+S.steps,"i");}
+  S.heap=205000+Math.round(Math.random()*4000);
+  if(S.screen==="lock"||S.screen==="home")render();
+  const kv=document.getElementById("kv"); if(kv)kv.innerHTML=kvHtml();
+  document.getElementById("pillTime").textContent=S.t.toTimeString().slice(0,5); }
+/* ---------------- boot ---------------- */
+function boot(){
+  window.S=S; window.MOD=MOD;
+  buildSchematic();
+  lcd=document.getElementById("lcd");
+  bindLcd(); buildTabs(); buildPanel(); render();
+  log("booting...","i");
+  log("SPI: TFT/Touch/SD no mesmo barramento (9/10/34)","w");
+  log("lv_init() ok · display 128x160 · Montserrat 12/14/20/28/32/48","i");
+  log("cfg: face=Redmi(2) acc=2 bat=98% steps="+S.steps,"i");
+  log("[up] pronto (AP WearSend / WearMirror)","g");
+  document.getElementById("btnReset").addEventListener("click",()=>{ ser.innerHTML="";S.steps=0;S.screen="lock";
+    log("reboot...","i"); log("lv_init() ok · tela de bloqueio","i"); render(); });
+  document.getElementById("btnLock").addEventListener("click",()=>{S.screen="lock";render();});
+  setInterval(tick,1000);
+}
+boot();
+</script>
+</body>
+</html>
